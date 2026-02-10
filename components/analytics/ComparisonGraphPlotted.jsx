@@ -1,5 +1,5 @@
 /**
- * @fileoverview ComparisonGraphPlotted Component - Topic comparison analytics visualization
+ * @fileoverview ComparisonGraphPlotted Component - Product comparison analytics visualization
  *
  * This component displays a line graph comparing selected topics over a custom date range.
  * Features include:
@@ -16,7 +16,7 @@
  * - Firebase Firestore for report data
  * - AuthContext for user roles
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -403,7 +403,7 @@ const ComparisonGraphPlotted = ({dateRange, setDateRange, selectedTopics, setSel
             {loaded &&	
             <div className="m-auto">	
               {/* Displays graph once data is collected for the topics. */}	
-              <div className="text-xl lg:text-2xl font-bold text-blue-600 pt-6 tracking-wider text-center ">Topic Reports - {formatDates()}</div>	
+              <div className="text-xl lg:text-2xl font-bold text-blue-600 pt-6 tracking-wider text-center ">Product Reports - {formatDates()}</div>	
               <div className="relative lg:pl-20 lg:pr-20 overflow-x-auto max-h-[420px] min-h-[260px]">
                 <Line height={360} options={options} data={graphData} />
               </div>	

@@ -171,7 +171,7 @@ export const AuthContextProvider = ({children}) => {
     const verifyEmail = (user) => {
         return new Promise((resolve, reject) => {
             const actionCodeSettings = {
-                'url': 'https://truthsleuthlocal.netlify.app/login',
+                'url': 'https://caffeine-dashboard.netlify.app/login',
                 'handleCodeInApp': true,
             };
 
@@ -390,7 +390,7 @@ export const AuthContextProvider = ({children}) => {
         const isLocalhost = window.location.hostname === 'localhost'
         const baseUrl = isLocalhost
             ? 'http://localhost:3000/signup'
-            : 'https://truthsleuthlocal.netlify.app/signup'
+            : 'https://caffeine-dashboard.netlify.app/signup'
 
         const actionCodeSettings = {
             url: baseUrl,

@@ -13,7 +13,7 @@
  * - @headlessui/react for the switch UI
  * - react-icons for status icons
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */

@@ -14,7 +14,7 @@
  * - Firebase Auth for user/role verification
  * - next/head for meta tags
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -108,7 +108,7 @@ const Dashboard = () => {
 	return (
 		<>
 			<Head>
-				<title>Dashboard | Truth Sleuth Local</title>
+				<title>Dashboard | Caffeine App</title>
 			</Head>
 			<div className="w-full">
 				<Navbar

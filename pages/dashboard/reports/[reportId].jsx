@@ -15,7 +15,7 @@
  * - next/image for image display
  * - react-icons for UI icons
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -117,7 +117,7 @@ const ReportDetails = () => {
 	}, [info])
 
 	function SendLinkByMail(href) {
-    var subject= "Misinformation Report";
+    var subject= "Caffeine Dashboard Report";
     var body = "Link to report:\r\n";
     body += window.location.href;
     var uri = "mailto:?subject=";

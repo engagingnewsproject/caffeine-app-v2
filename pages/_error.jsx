@@ -13,7 +13,7 @@ import Error from "next/error";
  * - Sentry for error monitoring
  * - next/error for default error UI
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */

@@ -11,7 +11,7 @@
  * - Sentry for error monitoring
  * - next/head for meta tags
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */

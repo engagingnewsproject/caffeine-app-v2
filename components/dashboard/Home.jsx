@@ -1,7 +1,7 @@
 /**
  * @fileoverview Home - Main Dashboard Component
  * 
- * This component serves as the main dashboard view for the Misinfo Dashboard application.
+ * This component serves as the main dashboard view for the Caffeine App Dashboard application.
  * It orchestrates the display of the headbar, tag graphs, and reports section,
  * providing a comprehensive overview of the system's data and functionality.
  * 

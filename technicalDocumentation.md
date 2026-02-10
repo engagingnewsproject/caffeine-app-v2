@@ -1,7 +1,7 @@
 # Technical Documentation
 ## Installation
 
-Misinfo Dashboard is a Next.js project bootstrapped with create-next-app.
+Caffeine App Dashboard is a Next.js project bootstrapped with create-next-app.
 
 ### Getting Started
 
@@ -167,7 +167,7 @@ components/modals/NewReportModal.jsx - new report modal component. Set new repor
 
 ## Tagging System
 
-Each report has specific tags applied. Topic Tags, Source Tags and Labels.
+Each report has specific tags applied. Product Tags, Source Tags and Labels.
 
 | Files |     |
 | ----- | --- |

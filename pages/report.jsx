@@ -13,7 +13,7 @@
  * - AuthContext and Firebase for user/role management
  * - next-i18next for translations
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -143,7 +143,7 @@ const Report = () => {
 	return (
 		<>
 			<Head>
-				<title>Report | Truth Sleuth Local</title>
+				<title>Report | Caffeine Dashboard</title>
 			</Head>
 			<div className={style.pageContainer}>
 				<Navbar

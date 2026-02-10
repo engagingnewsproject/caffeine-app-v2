@@ -5,7 +5,7 @@
  * features, and functionality without affecting the main application.
  * Currently renders the TestComponent for demonstration and testing.
  * 
- * @author Truth Sleuth Local Team
+ * @author Caffeine Dashboard Team
  * @version 1.0.0
  */
 

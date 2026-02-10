@@ -17,7 +17,7 @@ import Head from 'next/head';
  * - next/router for navigation
  * - Material Tailwind for UI components
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -55,7 +55,7 @@ export default function Custom404() {
   return (
 		<>
 			<Head>
-				<title>Not Found | Truth Sleuth Local</title>
+				<title>Not Found | Caffeine App</title>
 			</Head>
 			<div className="flex flex-col gap-2 items-center justify-center h-screen">
 				<Typography variant="h2">404 - Page Not Found</Typography>

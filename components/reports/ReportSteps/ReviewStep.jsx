@@ -90,9 +90,9 @@ const ReviewStep = ({
             <Typography>{reportData.selectedAgency}</Typography>
           </div>
           
-          {/* Topic */}
+          {/* Product */}
           <div>
-            <Typography variant="h6" color="blue">Topic</Typography>
+            <Typography variant="h6" color="blue">Product</Typography>
             <Typography>{reportData.selectedTopic}</Typography>
           </div>
           

@@ -15,7 +15,7 @@
  * - Firebase Firestore for agency/tag data
  * - country-state-city and react-select for location selection
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -29,7 +29,7 @@ import {List,ListItem} from "@material-tailwind/react"
 import Select from 'react-select';
 import { Country, State, City } from 'country-state-city';
 
-export const tagSystems = ['default', 'Topic', 'Source', 'Labels'];
+export const tagSystems = ['default', 'Product', 'Source', 'Labels'];
 
 /**
  * Settings Component
@@ -78,7 +78,7 @@ const Settings = () => {
           list: defaultSources,
           active: defaultSources
         },
-        Topic: {
+        Product: {
           list: defaultTopics,
           active: defaultTopics
         }
@@ -132,8 +132,7 @@ const Settings = () => {
   // Effect: Log when agency changes (admin only, placeholder for future logic)
   useEffect(() => {
     if (customClaims.admin && stateSelected != null) {
-      // TODO: fix
-      console.log('NEed to update agency ID here')
+      // TODO: Need to update agency ID here
     }
   }, [agency])
   // Effect: On mount or tagSystem change, determine agency for agency users or prompt admin to select
@@ -233,7 +232,7 @@ const Settings = () => {
         {agencyID && 
       <div>
         <div className="flex justify-between mx-6 my-6 tracking-normal items-center">
-            <div className="font-light">Topic Tags</div>
+            <div className="font-light">Product Tags</div>
             <button
                 onClick={() => setTagSystem(1)}
                 className="bg-sky-100 hover:bg-blue-200 text-blue-600 font-normal py-2 px-6 border border-blue-600 rounded-xl">

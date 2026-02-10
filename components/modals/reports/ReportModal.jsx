@@ -1,7 +1,7 @@
 /**
  * @fileoverview ReportModal Component
  * 
- * A comprehensive modal component for viewing and editing misinformation reports.
+ * A comprehensive modal component for viewing and editing caffeine reports.
  * Provides detailed report information display, editing capabilities, and sharing
  * functionality with role-based access control for admin and agency users.
  * 
@@ -16,7 +16,7 @@
  * - Report deletion with confirmation
  * - Responsive design with mobile support
  * 
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -282,7 +282,7 @@ const ReportModal = ({
 								<div>
 									<div className='flex flex-col mb-5'>
 										{/* Report Metadata */}
-										{/* Topic/Tag */}
+										{/* Product/Tag */}
 										<div className='flex flex-row mb-3 items-center'>
 											<RiMessage2Fill size={20} />
 											<div className='font-semibold px-2 self-center pr-4'>

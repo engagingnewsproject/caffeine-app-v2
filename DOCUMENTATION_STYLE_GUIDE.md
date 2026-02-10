@@ -1,7 +1,7 @@
 # Documentation Style Guide
 
 ## Overview
-This guide establishes consistent documentation standards for the Misinfo Dashboard project. All code should follow these guidelines to ensure maintainability and clarity.
+This guide establishes consistent documentation standards for the Caffeine App Dashboard project. All code should follow these guidelines to ensure maintainability and clarity.
 
 ## JSDoc Standards
 

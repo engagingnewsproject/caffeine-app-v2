@@ -18,7 +18,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { AiOutlineSearch } from 'react-icons/ai'
-import { GiMagnifyingGlass } from "react-icons/gi";
+import { GiCoffeeCup } from "react-icons/gi";
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { useAuth } from '../../context/AuthContext'
 import { db } from "../../config/firebase"
@@ -107,7 +107,7 @@ const Headbar = ({ search, setSearch}) => {
         if (customClaims.admin) {
             return (
                 <>
-                    Truth Sleuth Local
+                    Caffeine Dashboard
                     <div className='text-sm font-normal'>ADMIN DASHBOARD</div>
                 </>
             )
@@ -119,7 +119,7 @@ const Headbar = ({ search, setSearch}) => {
                 </>
             )
         } else {
-            return <>Truth Sleuth Local</>
+            return <>Caffeine Dashboard</>
         }
     }
 
@@ -142,7 +142,7 @@ const Headbar = ({ search, setSearch}) => {
         } else {
             return (
                 <div className='bg-blue-600 p-3 rounded-full'>
-                    <GiMagnifyingGlass className='fill-white' />
+                    <GiCoffeeCup className='fill-white' />
                 </div>
             )
         }

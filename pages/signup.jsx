@@ -13,7 +13,7 @@
  * - Privacy policy modal
  * - Internationalization support
  * 
- * @author Truth Sleuth Local Team
+ * @author Caffeine Dashboard Team
  * @version 1.0.0
  */
 
@@ -48,7 +48,7 @@ import { Country, State, City } from 'country-state-city'
 import moment from 'moment'
 import { RiContactsBookLine } from 'react-icons/ri'
 import { Button, Typography } from '@material-tailwind/react'
-import { GiMagnifyingGlass } from "react-icons/gi";
+import { GiCoffeeCup } from "react-icons/gi";
 import Head from 'next/head'
 import PrivacyPolicyModal from "../components/modals/PrivacyPolicyModal"
 
@@ -187,15 +187,15 @@ const SignUp = () => {
                   they have no real profile
                   -- or at least that is what my testing has shown.
                   1) Admin user adds a new agency
-                  2) user's email is sent email subject:"Sign in to MisInfo App requested"
+                  2) user's email is sent email subject:"Sign in to caffeine-dashboard App requested"
                   3) user clicks link in email
                   4) signup.jsx page with "** Must be the email you were sent the invite." text under Email input.
                   5) user submits
-                  6) user's email is sent "Verify your email for MisInfo App"
+                  6) user's email is sent "Verify your email for caffeine-dashboard App"
                   7) user clicks link
                   8) verifyEmail.jsx page
                   9) user clicks link
-                  10) https://misinfo-5d004.firebaseapp.com/__/auth/action?0000 page
+                  10) https://caffeine-app-d8cd8.firebaseapp.com/__/auth/action?0000 page
                   11) user clicks "Continue" button
                   12) login.jsx page to log in
                   notes: where is the user assigned the 'Agency' custom claim?
@@ -348,16 +348,16 @@ const SignUp = () => {
 	return (
 		<>
 			<Head>
-				<title>Signup | Truth Sleuth Local</title>
+				<title>Signup | Caffeine App</title>
 			</Head>
 			<div className="w-screen h-screen overflow-auto flex justify-center items-start pt-12 pb-8">
 				<div className="w-full max-w-sm font-light">
 					{/* Logo and branding section */}
 					<div className="flex flex-col items-center justify-center mb-2">
 						<div className="bg-blue-600 p-7 rounded-full mb-2">
-							<GiMagnifyingGlass size={30} className="fill-white" />
+							<GiCoffeeCup size={30} className="fill-white" />
 						</div>
-						<Typography variant="small" className='text-xs font-semibold text-blue-600'>Truth Sleuth Local</Typography>
+						<Typography variant="small" className='text-xs font-semibold text-blue-600'>Caffeine App</Typography>
 					</div>
 					
 					{/* Signup form */}

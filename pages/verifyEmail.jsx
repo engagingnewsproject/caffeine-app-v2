@@ -11,7 +11,7 @@
  * - Login navigation
  * - User role verification
  * 
- * @author Truth Sleuth Local Team
+ * @author Caffeine Dashboard Team
  * @version 1.0.0
  */
 
@@ -94,7 +94,7 @@ const VerifyEmail = () => {
   return (
 		<>
 			<Head>
-				<title>Verify Email | Truth Sleuth Local</title>
+				<title>Verify Email | Caffeine Dashboard</title>
 			</Head>
 			<div className="w-screen h-screen flex justify-center items-center">
 				<div className="w-full max-w-sm font-light">

@@ -9,7 +9,7 @@
  * - Image upload functionality
  * - Firebase integration
  * 
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 2.0.0
  * @since 2024
  */
@@ -102,7 +102,7 @@ const ReportSystem = ({
 	const { t, i18n } = useTranslation("NewReport")
 	const { user, customClaims } = useAuth()
 
-	const storageKey = `misinfo_report_draft_${user?.accountId || 'loading'}`
+	const storageKey = `caffeine-dashboard_report_draft_${user?.accountId || 'loading'}`
 	const [persistedData, setPersistData, clearPersistData, isExpired] =
 		useLocalStorage(
 			storageKey,
@@ -478,7 +478,7 @@ const ReportSystem = ({
 		if (!title.trim()) newErrors.title = "Title is required"
 		if (!detail.trim()) newErrors.detail = "Description is required"
 		if (!selectedAgency) newErrors.agency = "Agency is required"
-		if (!selectedTopic) newErrors.topic = "Topic is required"
+		if (!selectedTopic) newErrors.topic = "Product is required"
 		if (!selectedSource) newErrors.source = "Source is required"
 
 		if (Object.keys(newErrors).length > 0) {
@@ -499,7 +499,7 @@ const ReportSystem = ({
 		if (!title.trim()) newErrors.title = "Title is required"
 		if (!detail.trim()) newErrors.detail = "Description is required"
 		if (!selectedAgency) newErrors.agency = "Agency is required"
-		if (!selectedTopic) newErrors.topic = "Topic is required"
+		if (!selectedTopic) newErrors.topic = "Product is required"
 		if (!selectedSource) newErrors.source = "Source is required"
 
 		if (Object.keys(newErrors).length > 0) {
@@ -709,7 +709,7 @@ const ReportSystem = ({
 							/>
 						)}
 
-						{/* Step 3: Topic Selection */}
+						{/* Step 3: Product Selection */}
 						{reportSystem === 3 && (
 							<TopicSelectionStep
 								allTopicsArr={allTopicsArr}

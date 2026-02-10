@@ -16,7 +16,7 @@
  * - Firebase Firestore for help request data
  * - React context for authentication (if needed)
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -189,7 +189,7 @@ const HelpRequests = () => {
 			`Hi [NAME],%0A%0A%0A%0A%0A%0A` +
 			`Best Regards,%0A` +
 			`[YOUR NAME]%0A` +
-			`Truth Sleuth Support Team%0A%0A` +
+			`Caffeine App Support Team%0A%0A` +
 			`---%0A%0AForwarded Help Request:%0A%0A` +
 			`User ID: ${helpRequestInfo.userID}%0A` +
 			`Email: ${helpRequestInfo.email}%0A` +
@@ -198,7 +198,7 @@ const HelpRequests = () => {
 			`Created Date: ${helpRequestInfo.createdDate}%0A` +
 			`Images: ${helpRequestInfo.images ? helpRequestInfo.images.join(', ') : 'No images'}%0A`
 
-		const mailtoLink = `mailto:${helpRequestInfo.email}?subject=${encodeURIComponent(helpRequestInfo.subject)}%20-%20Truth%20Sleuth%20Help%20Request&body=${formattedBody}`
+		const mailtoLink = `mailto:${helpRequestInfo.email}?subject=${encodeURIComponent(helpRequestInfo.subject)}%20-%20Caffeine%20App%20Help%20Request&body=${formattedBody}`
 		return mailtoLink
 	}
 

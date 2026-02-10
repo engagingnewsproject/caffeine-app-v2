@@ -274,7 +274,7 @@ const NewReportModal = ({
 	 *    - The function then checks if a corresponding document exists in the 'tags' collection (using the agency ID).
 	 *
 	 * 4. **Create Default Tags if Not Exists**:
-	 *    - If the 'tags' document for the agency does not exist, it creates one with default tags for `Topic`, `Source`, and `Labels`.
+	 *    - If the 'tags' document for the agency does not exist, it creates one with default tags for `Product`, `Source`, and `Labels`.
 	 *
 	 * 5. **Log and Handle Errors**:
 	 *    - Logs messages based on whether the tags document exists or was created.
@@ -316,7 +316,7 @@ const NewReportModal = ({
           await setDoc(docRef, {
             Labels: { list: defaultLabels, active: defaultLabels },
             Source: { list: defaultSources, active: defaultSources },
-            Topic: { list: defaultTopics, active: defaultTopics },
+            Product: { list: defaultTopics, active: defaultTopics },
           })
 
           console.log('Created default tags for the agency.')
@@ -505,7 +505,7 @@ const NewReportModal = ({
 						list: defaultSources,
 						active: defaultSources,
 					},
-					Topic: {
+					Product: {
 						list: defaultTopics,
 						active: defaultTopics,
 					},
@@ -515,8 +515,8 @@ const NewReportModal = ({
 
 				// Otherwise, tag collection already exists.
 			} else {
-				const tagsData = docRef.data()['Topic']
-				setTopics(docRef.data()['Topic']['list'])
+				const tagsData = docRef.data()['Product']
+				setTopics(docRef.data()['Product']['list'])
 				tagsData['active'].sort((a, b) => {
 					if (a === t('Other')) return 1 // Move "Other" to the end
 					if (b === t('Other')) return -1 // Move "Other" to the end
@@ -572,7 +572,7 @@ const NewReportModal = ({
 	 * It performs the following tasks:
 	 *
 	 * 1. Retrieves the 'tags' document for the specified agency.
-	 * 2. Updates the 'list' and 'active' arrays for both 'Topic' and 'Source' fields.
+	 * 2. Updates the 'list' and 'active' arrays for both 'Product' and 'Source' fields.
 	 * 3. Logs success or any errors that occur during the update process.
 	 *
 	 * @param {Array} topicList - The list of topics to update.
@@ -583,10 +583,10 @@ const NewReportModal = ({
 		try {
 			const docRef = doc(db, 'tags', agencyId)
 
-			// Update the 'list' and 'active' arrays for both 'Topic' and 'Source' fields
+			// Update the 'list' and 'active' arrays for both 'Product' and 'Source' fields
 			await updateDoc(docRef, {
-				'Topic.list': arrayUnion(...topicList), // Add new topics to the 'list' array
-				'Topic.active': arrayUnion(...active), // Add new topics to the 'active' array
+				'Product.list': arrayUnion(...topicList), // Add new topics to the 'list' array
+				'Product.active': arrayUnion(...active), // Add new topics to the 'active' array
 				'Source.list': arrayUnion(...sourceList), // Add new sources to the 'list' array
 				'Source.active': arrayUnion(...activeSources), // Add new sources to the 'active' array
 			})
@@ -814,7 +814,7 @@ const NewReportModal = ({
 		} else {
 			const topicDoc = doc(db, 'tags', selectedAgencyId)
 			const topicRef = await getDoc(topicDoc)
-			const topics = topicRef.get('Topic')['active']
+			const topics = topicRef.get('Product')['active']
 			setTopics(topics)
 		}
 	}
@@ -851,7 +851,7 @@ const NewReportModal = ({
 			const docRef = doc(db, 'tags', selectedAgencyId)
 			const docSnap = await getDoc(docRef)
 			if (docSnap.exists()) {
-				const topicData = docSnap.get('Topic')['active']
+				const topicData = docSnap.get('Product')['active']
 				const sourceData = docSnap.get('Source')['active']
 				setTopics(topicData)
 				setSources(sourceData)

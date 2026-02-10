@@ -17,7 +17,7 @@
  * - Sentry for error monitoring
  * - Next.js Head for meta tags and icons
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */

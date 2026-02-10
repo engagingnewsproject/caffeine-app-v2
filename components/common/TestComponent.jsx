@@ -14,7 +14,7 @@
  * - Firebase Firestore for real-time data
  * - react-switch for toggle UI
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */

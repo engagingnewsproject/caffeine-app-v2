@@ -15,7 +15,7 @@
  * - Role-based access control (admin vs agency)
  * - Bulk read status updates
  * 
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -74,7 +74,7 @@ const columns = [
 	{ label: 'Title', accessor: 'title', sortable: true },
 	{ label: 'Date/Time', accessor: 'createdDate', sortable: true },
 	// { label: 'Candidates', accessor: 'candidates', sortable: false },
-	{ label: 'Topic Tags', accessor: 'topic', sortable: true },
+	{ label: 'Product Tags', accessor: 'topic', sortable: true },
 	{ label: 'Sources', accessor: 'hearFrom', sortable: false },
 	{ label: 'Labels', accessor: 'label', sortable: false },
 	{ label: 'Read/Unread', accessor: 'read', sortable: true },
@@ -356,7 +356,7 @@ const ReportsSection = ({
 	 * @param {string} reportURI - URI/link to the report
 	 */
 	const handleUserSendEmail = (reportURI) => {
-		const subject = 'Misinfo Report'
+		const subject = 'Caffeine App Report'
 		const body = `Link to report:\n${reportURI}`
 		const uri = `mailto:?subject=${encodeURIComponent(
 			subject,

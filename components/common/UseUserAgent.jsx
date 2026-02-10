@@ -12,7 +12,7 @@
  * - window.navigator.userAgent for browser detection
  * - window.matchMedia for PWA display mode
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */

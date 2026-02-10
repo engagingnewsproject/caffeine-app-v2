@@ -18,7 +18,7 @@
  * - NewAgencyModal: Create new agencies
  * - ConfirmModal: Delete confirmation
  * 
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -51,7 +51,7 @@ import { Button } from '@material-tailwind/react'
  * Agencies Component - Comprehensive agency management interface
  * 
  * This component provides a complete CRUD interface for managing agencies in the
- * misinformation dashboard. It handles agency listing, creation, editing, and deletion
+ * Caffeine App. It handles agency listing, creation, editing, and deletion
  * with integrated user management and image upload capabilities.
  * 
  * Key functionality:

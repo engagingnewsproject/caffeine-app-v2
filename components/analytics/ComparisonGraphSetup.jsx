@@ -1,5 +1,5 @@
 /**
- * @fileoverview ComparisonGraphSetup Component - Topic comparison analytics setup
+ * @fileoverview ComparisonGraphSetup Component - Product comparison analytics setup
  *
  * This component provides an interface for selecting topics and date ranges to compare trends.
  * Features include:
@@ -15,7 +15,7 @@
  * - react-date-range and react-select for UI controls
  * - Firebase Firestore for topic data
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -51,7 +51,7 @@ import firebaseHelper from '../../firebase/FirebaseHelper'
  */
 const ComparisonGraphSetup = ({privilege, agencyId}) => {
 
-  // --- Topic selection state ---
+  // --- Product selection state ---
   const [selectedTopics, setSelectedTopics] = useState([]) // Topics selected by the user
   const [listTopicChoices, setTopicChoices] = useState([]) // List of available topics for selection
 
@@ -166,7 +166,7 @@ const ComparisonGraphSetup = ({privilege, agencyId}) => {
 
   return (
     <div className="relative h-full lg:h-1/2">
-      <h1 className={`${globalStyles.heading.h1.blue} text-center`}>Compare Topic Reports</h1>
+      <h1 className={`${globalStyles.heading.h1.blue} text-center`}>Compare Product Reports</h1>
               {/* Initial screen that appears when user selects the comparison view. Allows user to select three topics. */}
             {tab == 0 && 
               <div className="flex items-center justify-center md:ml-12">
