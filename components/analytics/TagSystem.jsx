@@ -16,7 +16,7 @@
  * - Firebase Firestore for tag data
  * - React context for authentication and role management
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -39,7 +39,7 @@ import { useAuth } from '../../context/AuthContext'
 import { db } from '../../config/firebase'
 import Image from 'next/image'
 
-const maxTags = [0, 7, 10, 7] // default, Topic, Source, Labels (respectively)
+const maxTags = [0, 7, 10, 7] // default, Product, Source, Labels (respectively)
 
 /**
  * setData - Updates or creates the tag document for the agency in Firestore.
@@ -113,7 +113,7 @@ const TagSystem = ({ tagSystem, setTagSystem, agencyID}) => {
     // --- Error and validation state ---
     const [maxTagsError, setMaxTagsError] = useState(false) // Tag limit error
 
-    const tags = ["Topic", "Source", "Labels"]
+    const tags = ["Product", "Source", "Labels"]
     //const docRef = getDoc(db, "tags", tagSystem)
     const { user, customClaims, setCustomClaims} = useAuth()
 
@@ -141,14 +141,19 @@ const TagSystem = ({ tagSystem, setTagSystem, agencyID}) => {
             console.log(tags[tagSystem - 1])
             console.log("Document data:", docSnap.get(tags[tagSystem - 1]));
             const tagsData = docSnap.get(tags[tagSystem - 1])
-            console.log(tagsData)
-              setList(tagsData.list)
-              tagsData.active.sort((a, b) => {
-                  if (a === "Other") return 1; // Move "Other" to the end
-                  if (b === "Other") return -1; // Move "Other" to the end
-                  return a.localeCompare(b); // Default sorting for other elements
-              });
-              setActive(tagsData.active)
+            if (!tagsData?.list || !tagsData?.active) {
+                setList([])
+                setActive([])
+                return
+            }
+
+            setList(tagsData.list)
+            const sortedActive = [...(tagsData.active || [])].sort((a, b) => {
+                if (a === "Other") return 1
+                if (b === "Other") return -1
+                return a.localeCompare(b)
+            })
+            setActive(sortedActive)
           } else {
             // docSnap.data() will be undefined in this case
             console.log("No such document!");
