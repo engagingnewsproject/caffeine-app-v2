@@ -1,0 +1,182 @@
+/**
+ * Smoke tests for the admin Pipeline rundown + Data Studio embed.
+ */
+import React from 'react'
+import { render, screen } from '@testing-library/react'
+import { ThemeProvider } from '@material-tailwind/react'
+import Pipeline from '../Pipeline'
+import { DATA_STUDIO_EMBED_SRC } from '../../../utils/pipeline-runs'
+
+jest.mock('../../../utils/fetch-pipeline-runs', () => ({
+	fetchPipelineRuns: jest.fn().mockResolvedValue([]),
+}))
+
+jest.mock('../../../config/firebase', () => ({
+	db: {},
+}))
+
+jest.mock('../../../utils/pipeline-config', () => ({
+	PIPELINE_SETTING_FIELDS: [
+		{
+			key: 'importToFirestore',
+			type: 'switch',
+			group: 'Firestore import',
+			label: 'Import curated articles to Firestore',
+			description: 'When off, skip dashboard import.',
+			defaultLabel: 'true',
+		},
+		{
+			key: 'clusterMergePersonMinCosine',
+			type: 'decimal',
+			group: 'Clustering',
+			label: 'Same-person merge similarity (0–1)',
+			description: 'Higher = fewer merges.',
+			defaultLabel: '0.45',
+		},
+	],
+	PROD_DEFAULTS: {
+		importToFirestore: true,
+		jobFilterProcessedUrls: true,
+		publicationDateFreshnessFilter: true,
+		firestoreImportForceSingleAgency: false,
+		maxDomains: 6000,
+		maxLinksPerDomain: 10,
+		curatedArticleLimit: 200,
+		firestoreImportMaxPerState: 5,
+		minPublicationDate: '2026-01-01',
+		firestoreImportUserId: '',
+		firestoreImportAgencyName: 'Test Agency',
+	},
+	getPipelineConfig: jest.fn().mockResolvedValue({
+		importToFirestore: true,
+		jobFilterProcessedUrls: true,
+		publicationDateFreshnessFilter: true,
+		firestoreImportForceSingleAgency: false,
+		maxDomains: 6000,
+		maxLinksPerDomain: 10,
+		curatedArticleLimit: 200,
+		firestoreImportMaxPerState: 5,
+		minPublicationDate: '2026-01-01',
+		firestoreImportUserId: '',
+		firestoreImportAgencyName: 'Test Agency',
+		clusterMergePersonMinCosine: 0.45,
+	}),
+	savePipelineConfig: jest.fn(),
+	validatePipelineConfig: jest.fn().mockReturnValue(null),
+}))
+
+jest.mock('../../../utils/pipeline-prompts', () => ({
+	PIPELINE_PROMPT_FIELDS: [
+		{
+			key: 'electionSystemPrompt',
+			label: 'Election classification prompt',
+			description: 'Step 3 system prompt.',
+			requiredPlaceholders: [],
+		},
+	],
+	normalizePipelinePrompts: jest.fn().mockReturnValue({
+		electionSystemPrompt: '',
+		swingMultiPrompt: '',
+		swingSinglePrompt: '',
+		meatinessPrompt: '',
+	}),
+	getPipelinePrompts: jest.fn().mockResolvedValue({
+		electionSystemPrompt: '',
+		swingMultiPrompt: '',
+		swingSinglePrompt: '',
+		meatinessPrompt: '',
+	}),
+	effectivePromptText: jest.fn().mockReturnValue({
+		text: 'bundled election default',
+		isOverride: false,
+	}),
+	savePipelinePrompts: jest.fn(),
+	clearPromptOverride: jest.fn(),
+	validatePromptText: jest.fn().mockReturnValue(null),
+}))
+
+jest.mock('../../../context/AuthContext', () => ({
+	useAuth: () => ({ user: { uid: 'admin-uid' } }),
+}))
+
+const sampleRun = {
+	run_timestamp: '20260811_070316',
+	measurement_run_id: 'production_daily',
+	health_status: 'ok',
+	duration_seconds: 3720,
+	links_rows: 1000,
+	extracted_rows: 800,
+	election_rows: 120,
+	geographic_rows: 40,
+	clustered_rows: 30,
+	curated_rows: 12,
+	dashboard_rows: 12,
+	execution_name: 'truth-sleuth-test-abc',
+	image_tag: 'sha-123',
+	election_classifier_mode: 'bert_primary',
+	pipeline_status: 'success',
+	issues_json: '[]',
+	steps_completed_json: '["link_collection","content_extraction"]',
+}
+
+function renderPipeline(fetchRuns) {
+	return render(
+		<ThemeProvider>
+			<Pipeline fetchRuns={fetchRuns} />
+		</ThemeProvider>,
+	)
+}
+
+describe('Pipeline', () => {
+	it('renders the title, settings, rundown, and Data Studio embed', async () => {
+		const fetchRuns = jest.fn().mockResolvedValue([sampleRun])
+		renderPipeline(fetchRuns)
+
+		expect(
+			screen.getByRole('heading', { level: 1, name: 'Pipeline' }),
+		).toBeInTheDocument()
+
+		expect(
+			await screen.findByRole('heading', { name: 'Pipeline settings' }),
+		).toBeInTheDocument()
+		expect(
+			screen.getByText('Import curated articles to Firestore'),
+		).toBeInTheDocument()
+		expect(screen.getByDisplayValue('0.45')).toBeInTheDocument()
+
+		expect(
+			await screen.findByRole('heading', { name: 'LLM prompts' }),
+		).toBeInTheDocument()
+		expect(
+			screen.getByText('Election classification prompt'),
+		).toBeInTheDocument()
+
+		expect(
+			await screen.findByRole('heading', { name: 'Run details' }),
+		).toBeInTheDocument()
+		expect(screen.getAllByText('production_daily').length).toBeGreaterThan(0)
+		expect(screen.getAllByText('1h 2m').length).toBeGreaterThan(0)
+		expect(screen.getByText('truth-sleuth-test-abc')).toBeInTheDocument()
+
+		const iframe = screen.getByTitle(
+			'Truth Sleuth Data Studio articles report',
+		)
+		expect(iframe).toHaveAttribute('src', DATA_STUDIO_EMBED_SRC)
+	})
+
+	it('shows an error when the rundown fails to load', async () => {
+		const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+		const fetchRuns = jest
+			.fn()
+			.mockRejectedValue(new Error('Admin privileges required.'))
+		renderPipeline(fetchRuns)
+
+		expect(await screen.findByRole('alert')).toHaveTextContent(
+			'Admin privileges required.',
+		)
+		expect(
+			screen.getByTitle('Truth Sleuth Data Studio articles report'),
+		).toHaveAttribute('src', DATA_STUDIO_EMBED_SRC)
+		errorSpy.mockRestore()
+	})
+})

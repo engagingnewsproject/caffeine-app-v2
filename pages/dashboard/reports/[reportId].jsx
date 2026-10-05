@@ -15,23 +15,56 @@
  * - next/image for image display
  * - react-icons for UI icons
  *
- * @author Caffeine App Team
+ * @author Misinformation Dashboard Team
  * @version 1.0.0
  * @since 2024
  */
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
-import { getDoc, getDocs, doc, setDoc, collection, updateDoc } from "firebase/firestore";
+import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../../config/firebase'
+import {
+	buildLabelOptions,
+	CUSTOM_LABEL_MAX_LENGTH,
+	DEFAULT_REPORT_LABEL,
+	OTHER_LABEL,
+	validateCustomLabel,
+} from '../../../config/labels'
+import {
+	addAgencyCustomLabel,
+	agencyLabelsFromTagsDoc,
+	fetchAgencyActiveLabels,
+	knownAgencyIdForReport,
+} from '../../../utils/label-tags'
 import { RiMessage2Fill } from 'react-icons/ri'
 import { BiEditAlt } from 'react-icons/bi'
 import { IoReturnUpBackSharp } from 'react-icons/io5'
 import { BsShareFill } from 'react-icons/bs'
 import { AiOutlineFieldTime } from 'react-icons/ai'
-import SwitchRead from "../../../components/profile/SwitchRead"
-import Link from "next/link"
-import Image from 'next/image';
-import globalStyles from '../../../styles/globalStyles';
+import SwitchRead from '../../../components/reports/SwitchRead'
+import Link from 'next/link'
+import Image from 'next/image'
+import globalStyles from '../../../styles/globalStyles'
+import FormInput from '../../../components/ui/FormInput'
+import FormTextarea from '../../../components/ui/FormTextarea'
+import LabelSelectMenu from '../../../components/reports/LabelSelectMenu'
+import ShareReportModal from '../../../components/partials/modals/ShareReportModal'
+import MoveReportModal from '../../../components/modals/reports/MoveReportModal'
+import { fetchAgencyOptions, moveReportToState } from '../../../utils/move-report'
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations'
+import { useTranslation } from 'next-i18next'
+import { useAuth } from '../../../context/AuthContext'
+import {
+	buildMergedAgencyTagLabelMap,
+	getTagLabel,
+	normalizeTagDefaults,
+	TAG_DEFAULTS_DOC_PATH,
+} from '../../../utils/tag-defaults'
+import { adminDb } from '../../../lib/firebase-admin'
+import { getSession } from '../../../lib/server-session'
+import { reportPageResult } from '../../../lib/report-access'
+import { serializeFirestore } from '../../../lib/serialize-firestore'
+import { toInitialAuth } from '../../../lib/session'
 
 /**
  * ReportDetails Page
@@ -41,97 +74,175 @@ import globalStyles from '../../../styles/globalStyles';
  *
  * @returns {JSX.Element} The rendered report details page
  */
-const ReportDetails = () => {
-	const userId = localStorage.getItem("userId")
+const ReportDetails = ({ initialReport }) => {
 	const router = useRouter()
-	const [info, setInfo] = useState({})
-	const [reporterInfo, setReporterInfo] = useState({})
-	const [postedDate, setPostedDate] = useState("")
-	const [selectedLabel, setSelectedLabel] = useState("")
-	const [changeStatus, setChangeStatus] = useState("")
-	const [update, setUpdate] = useState("")
-	const [activeLabels, setActiveLabels] = useState([])
+	const { t, i18n } = useTranslation('NewReport')
+	const { user, customClaims, clientAuthReady } = useAuth()
+	const [info, setInfo] = useState(initialReport.info)
+	const [reporterInfo, setReporterInfo] = useState(initialReport.reporterInfo)
+	const [postedDate, setPostedDate] = useState('')
+	const [selectedLabel, setSelectedLabel] = useState(
+		initialReport.info.label || DEFAULT_REPORT_LABEL,
+	)
+	const [changeStatus, setChangeStatus] = useState('')
+	const [update, setUpdate] = useState('')
+	const [modalAgencyLabels, setModalAgencyLabels] = useState(
+		initialReport.agencyLabels,
+	)
+	const [modalAgencyId, setModalAgencyId] = useState(initialReport.agencyId)
+	const [agencyLabelColors, setAgencyLabelColors] = useState(
+		initialReport.agencyLabelColors,
+	)
+	const [otherLabelDraft, setOtherLabelDraft] = useState('')
+	const [otherLabelError, setOtherLabelError] = useState('')
+	const [shareReportModal, setShareReportModal] = useState(false)
+	const [moveReportModal, setMoveReportModal] = useState(false)
+	const [moveStatus, setMoveStatus] = useState('')
+	const [tagLabelMap, setTagLabelMap] = useState(initialReport.tagLabelMap)
+
+	// useState only reads initialReport on mount; router.replace brings fresh props.
+	useEffect(() => {
+		setInfo(initialReport.info)
+		setReporterInfo(initialReport.reporterInfo)
+		setSelectedLabel(initialReport.info.label || DEFAULT_REPORT_LABEL)
+		setModalAgencyLabels(initialReport.agencyLabels)
+		setModalAgencyId(initialReport.agencyId)
+		setAgencyLabelColors(initialReport.agencyLabelColors)
+		setTagLabelMap(initialReport.tagLabelMap)
+	}, [initialReport])
 
 	const { reportId } = router.query
-	const linkStyle = "font-light mb-1 text-sm underline underline-offset-1"
+	const linkStyle = 'font-light mb-1 text-sm underline underline-offset-1'
 
-  // console.log('current URL 👉️', window.location.href);
-
-	const getData = async () => {
-    const infoRef = await getDoc(doc(db, "reports",  reportId))
-		setInfo(infoRef.data())
-    getDoc(doc(db, "mobileUsers", infoRef.data()['userID'])).then((mobileRef) => setReporterInfo(mobileRef.data()))
-
-		const tagsRef = await getDoc(doc(db, "tags", userId))
-    setActiveLabels(tagsRef.data()['Labels']['active'])
-	}
+	const labelOptions = useMemo(() => {
+		const currentLabel = info?.label || DEFAULT_REPORT_LABEL
+		return buildLabelOptions(modalAgencyLabels, currentLabel)
+	}, [modalAgencyLabels, info?.label])
 
 	const handleNotesChange = (e) => {
-    if (e.target.value != info['note']) {
+		if (e.target.value != info['note']) {
 			setUpdate(e.target.value)
 		} else {
-			setUpdate("")
+			setUpdate('')
 		}
 	}
 
 	const revertBack = () => {
-    if (info['note']) {
-      document.getElementById('notes').value = info['note']
+		if (info['note']) {
+			document.getElementById('notes').value = info['note']
 		} else {
-      document.getElementById('notes').value = ""
+			document.getElementById('notes').value = ''
 		}
-		setUpdate("")
+		setUpdate('')
 	}
 
 	const saveChanges = async () => {
-    const docRef = doc(db, 'reports', reportId)
-    const res = await updateDoc(docRef, { note: document.getElementById('notes').value})
-    info['note'] = document.getElementById('notes').value
-		setUpdate("")
+		const docRef = doc(db, 'reports', reportId)
+		const res = await updateDoc(docRef, {
+			note: document.getElementById('notes').value,
+		})
+		info['note'] = document.getElementById('notes').value
+		setUpdate('')
 	}
 
-	const handleLabelChanged = async (e) => {
-		setChangeStatus("Saving changes...")
+	const handleLabelChange = async (e) => {
 		e.preventDefault()
-    const docRef = doc(db, 'reports', reportId)
-		await updateDoc(docRef, { label: e.target.value })
-		setChangeStatus("Label changes saved successfully")
+		const newLabel = e.target.value
+
+		if (newLabel === OTHER_LABEL) {
+			setSelectedLabel(OTHER_LABEL)
+			setOtherLabelDraft('')
+			setOtherLabelError('')
+			return
+		}
+
+		const currentLabel = info.label || DEFAULT_REPORT_LABEL
+		if (newLabel === currentLabel) {
+			setOtherLabelDraft('')
+			setOtherLabelError('')
+			return
+		}
+
+		setChangeStatus('Saving changes...')
+		try {
+			const docRef = doc(db, 'reports', reportId)
+			await updateDoc(docRef, { label: newLabel })
+			setSelectedLabel(newLabel)
+			setInfo((prev) => ({ ...prev, label: newLabel }))
+			setOtherLabelDraft('')
+			setOtherLabelError('')
+			setChangeStatus('Label changes saved successfully')
+		} catch (error) {
+			console.error('Error updating label:', error)
+			setChangeStatus('')
+		}
+	}
+
+	const handleOtherLabelChange = (e) => {
+		setOtherLabelDraft(e.target.value)
+		if (otherLabelError) {
+			setOtherLabelError('')
+		}
+	}
+
+	const handleOtherLabelCommit = async () => {
+		const error = validateCustomLabel(otherLabelDraft)
+		if (error) {
+			setOtherLabelError(error)
+			return
+		}
+
+		const customText = otherLabelDraft.trim()
+		setChangeStatus('Saving changes...')
+
+		try {
+			const docRef = doc(db, 'reports', reportId)
+			await updateDoc(docRef, { label: customText })
+
+			if (modalAgencyId) {
+				await addAgencyCustomLabel(modalAgencyId, customText)
+				const refreshed = await fetchAgencyActiveLabels(modalAgencyId)
+				setModalAgencyLabels(refreshed)
+			}
+
+			setSelectedLabel(customText)
+			setInfo((prev) => ({ ...prev, label: customText }))
+			setOtherLabelDraft('')
+			setOtherLabelError('')
+			setChangeStatus('Label changes saved successfully')
+		} catch (err) {
+			console.error('Error saving custom label:', err)
+			setOtherLabelError('Could not save label. Please try again.')
+			setChangeStatus('')
+		}
 	}
 
 	useEffect(() => {
-		getData()
-    if (info['createdDate']) {
-      const options = { day: '2-digit', year: 'numeric', month: 'short', hour: 'numeric', minute: 'numeric' }
-      setPostedDate(info["createdDate"].toDate().toLocaleString('en-US', options).replace(/,/g,"").replace('at', ''))
-		}
-	}, [])
-
-	useEffect(() => {
-    if (info['createdDate']) {
-      const options = { day: '2-digit', year: 'numeric', month: 'short', hour: 'numeric', minute: 'numeric' }
-      setPostedDate(info["createdDate"].toDate().toLocaleString('en-US', options).replace(/,/g,"").replace('at', ''))
+		if (info?.createdDate) {
+			const options = {
+				day: '2-digit',
+				year: 'numeric',
+				month: 'short',
+				hour: 'numeric',
+				minute: 'numeric',
 			}
-    if (info['label']) {
-      setSelectedLabel(info['label'])
+			setPostedDate(
+				new Date(info.createdDate)
+					.toLocaleString('en-US', options)
+					.replace(/,/g, '')
+					.replace('at', ''),
+			)
+		}
+		if (info && Object.keys(info).length > 0) {
+			setSelectedLabel(info.label || DEFAULT_REPORT_LABEL)
 		}
 	}, [info])
 
-	function SendLinkByMail(href) {
-    var subject= "Caffeine Dashboard Report";
-    var body = "Link to report:\r\n";
-    body += window.location.href;
-    var uri = "mailto:?subject=";
-    uri += encodeURIComponent(subject);
-    uri += "&body=";
-    uri += encodeURIComponent(body);
-    window.open(uri);
-	}
-	
 	return (
-		<div className="p-16">
+		<div data-component="reportId" className="p-16">
 			<div className="flex justify-between w-full mb-5">
-				<div className="text-2xl font-bold text-blue-600 tracking-wider mb-8">
-				{/* Temp link back to Dashboard for testing */}
+				<div className="text-2xl font-bold text-[#2E3B4E] tracking-wider mb-8">
+					{/* Temp link back to Dashboard for testing */}
 					More Information
 				</div>
 				<div>
@@ -143,111 +254,360 @@ const ReportDetails = () => {
 					</Link>
 				</div>
 			</div>
+			{info?.archived === true && (
+				<div className="mb-4 px-4 py-2 rounded-md bg-amber-100 text-amber-900 text-sm">
+					This report is archived and hidden from default dashboard views.
+				</div>
+			)}
 			<div className="grid grid-cols-2 gap-24">
 				<div className="left-side">
 					<div className="mb-2">
 						<h6 className={`${globalStyles.heading.h2.black} mb-2`}>Title</h6>
-            <div className="text-sm bg-white rounded-xl p-4">{info['title'] || <span className="italic text-gray-400">No Title</span>}</div>
+						<div className="text-sm bg-white rounded-md p-4">
+							{info['title'] || (
+								<span className="italic text-gray-400">No Title</span>
+							)}
 						</div>
-          { reporterInfo &&
+					</div>
+					{reporterInfo?.name && reporterInfo?.email && (
 						<div className="text-md mb-4 font-light text-right">
 							<div>
-              <span className="font-semibold">Reported by:</span> {reporterInfo['name']} (<a target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" href={"mailto:" + reporterInfo['email']}>{reporterInfo['email']}</a>)
+								<span className="font-semibold">Reported by:</span>{' '}
+								{reporterInfo['name']} (
+								<a
+									target="_blank"
+									rel="noopener noreferrer"
+									className="text-[#2E3B4E] hover:underline"
+									href={'mailto:' + reporterInfo['email']}>
+									{reporterInfo['email']}
+								</a>
+								)
 							</div>
-          </div>}
+						</div>
+					)}
+					{info?.origin === 'scrape' &&
+						!(reporterInfo?.name && reporterInfo?.email) && (
+							<div className="text-md mb-4 font-light text-right">
+								<span className="font-semibold">Reported by:</span> Scraped
+								(automated)
+							</div>
+						)}
 					<div className="mb-8">
 						<div className={globalStyles.heading.h2.black}>Label</div>
-            <select id="labels" onChange={(e) => handleLabelChanged(e)} defaultValue={selectedLabel} className="text-sm inline-block px-8 border-none bg-yellow-400 py-1 rounded-2xl shadow hover:shadow-none">
-              <option value={selectedLabel ? selectedLabel : "none"}>{selectedLabel ? selectedLabel : 'Choose a label'}</option>
-              {activeLabels.filter(label => label != selectedLabel).map((label, i) => {
-                return (<option value={label} key={i}>{label}</option>)
-                })
-              }
-						</select>
-            {changeStatus && <span className="ml-5 font-light text-sm italic">{changeStatus}</span>}
+						<LabelSelectMenu
+							id="labels"
+							labelOptions={labelOptions}
+							selectedLabel={selectedLabel || DEFAULT_REPORT_LABEL}
+							agencyLabelColors={agencyLabelColors}
+							onLabelChange={handleLabelChange}
+							disabled={!clientAuthReady}
+						/>
+						{selectedLabel === OTHER_LABEL && (
+							<div className="mt-3">
+								<FormInput
+									type="text"
+									id="other-label"
+									label={`Specify label (max ${CUSTOM_LABEL_MAX_LENGTH} characters)`}
+									value={otherLabelDraft}
+									onChange={handleOtherLabelChange}
+									onBlur={handleOtherLabelCommit}
+									onKeyDown={(e) => {
+										if (e.key === 'Enter') {
+											e.preventDefault()
+											handleOtherLabelCommit()
+										}
+									}}
+									maxLength={CUSTOM_LABEL_MAX_LENGTH}
+									disabled={!clientAuthReady}
+									className="bg-white"
+								/>
+								{otherLabelError && (
+									<p className="mt-1 text-sm text-red-600">{otherLabelError}</p>
+								)}
+							</div>
+						)}
+						{changeStatus && (
+							<span className="ml-5 font-light text-sm italic">
+								{changeStatus}
+							</span>
+						)}
 					</div>
 					<div className="flex flex-col mb-5">
 						<div className="flex flex-row mb-3 items-center">
 							<RiMessage2Fill size={20} />
 							<div className="font-semibold px-2 self-center pr-4">Tag</div>
-              <div className="text-md font-light">{info['topic']}</div>
+							<div className="text-md font-light">
+								{getTagLabel({
+									id: info['topic'],
+									locale: i18n.language,
+									labelMap: tagLabelMap,
+									t,
+									system: 'topics',
+								})}
+							</div>
 						</div>
 						<div className="flex flex-row mb-3 items-center">
 							<BiEditAlt size={20} />
-              <div className="font-semibold px-2 self-center pr-4">Sources / Media</div>
-              <div className="text-md font-light">{info['hearFrom']}</div>
+							<div className="font-semibold px-2 self-center pr-4">
+								Sources / Media
+							</div>
+							<div className="text-md font-light">
+								{getTagLabel({
+									id: info['hearFrom'],
+									locale: i18n.language,
+									labelMap: tagLabelMap,
+									t,
+									system: 'sources',
+								})}
+							</div>
 						</div>
 						<div className="flex flex-row mb-3 items-center">
 							<AiOutlineFieldTime size={20} />
-              <div className="font-semibold px-2 self-center pr-4">Date / Time</div>
+							<div className="font-semibold px-2 self-center pr-4">
+								Date / Time
+							</div>
 							<div className="text-md font-light">{postedDate}</div>
 						</div>
 						<div className="flex flex-row mb-3 items-center">
-							<SwitchRead setReportModalId={reportId}/>
+							<SwitchRead
+								setReportModalId={reportId}
+								read={info.read}
+								disabled={!clientAuthReady}
+							/>
 						</div>
 					</div>
 					<div className="mb-8">
-						<div className={`${globalStyles.heading.h2.black} mb-2`}>Link to the Information</div>
+						<div className={`${globalStyles.heading.h2.black} mb-2`}>
+							Link to the Information
+						</div>
 						<div className="flex flex-col">
-              {info['link'] && <a className={linkStyle} target="_blank" rel="noreferrer" href={"//" + info['link']}>{info['link']}</a>}
-              {info['secondLink'] && <a className={linkStyle} target="_blank" rel="noreferrer" href={"//" + info['secondLink']}>{info['secondLink']}</a>}
-              {info['thirdLink'] && <a className={linkStyle} target="_blank" rel="noreferrer" href={"//" + info['thirdLink']}>{info['thirdLink']}</a>}
+							{info['link'] && (
+								<a
+									className={linkStyle}
+									target="_blank"
+									rel="noreferrer"
+									href={'//' + info['link']}>
+									{info['link']}
+								</a>
+							)}
+							{info['secondLink'] && (
+								<a
+									className={linkStyle}
+									target="_blank"
+									rel="noreferrer"
+									href={'//' + info['secondLink']}>
+									{info['secondLink']}
+								</a>
+							)}
+							{info['thirdLink'] && (
+								<a
+									className={linkStyle}
+									target="_blank"
+									rel="noreferrer"
+									href={'//' + info['thirdLink']}>
+									{info['thirdLink']}
+								</a>
+							)}
 						</div>
 					</div>
 					<div>
-						<div className={`${globalStyles.heading.h2.black} mb-2`}>Description</div>
-            <div className="font-light overflow-auto max-h-32">{info['detail']}</div>
+						<div className={`${globalStyles.heading.h2.black} mb-2`}>
+							Description
+						</div>
+						<div className="font-light overflow-auto max-h-32">
+							{info['detail']}
+						</div>
 					</div>
 				</div>
 				<div className="right-side">
 					<div>
-						<div className={`${globalStyles.heading.h2.black} mb-2`}>Newsroom's Notes</div>
-						<textarea
+						<div className={`${globalStyles.heading.h2.black} mb-2`}>
+							Newsroom's Notes
+						</div>
+						<FormTextarea
 							id="notes"
+							label="Newsroom's Notes"
 							onChange={handleNotesChange}
-							placeholder="No notes yet..."
-							className="border transition ease-in-out w-full text-md font-light bg-white rounded-xl p-4 border-none
-              focus:text-gray-700 focus:bg-white focus:border-blue-400 focus:outline-none resize-none mb-12"
-							rows="4"
-              defaultValue={info['note']}
-              >
-            </textarea>
-            {update &&
+							className="bg-white"
+							containerProps={{ className: 'mb-12' }}
+							rows={4}
+							defaultValue={info['note']}
+						/>
+						{update && (
 							<div className="-mt-8 flex float-right mb-6">
-              <button onClick={revertBack}
-                className="bg-white hover:bg-red-500 hover:text-white text-sm text-red-500 font-bold py-1.5 px-6 rounded-md focus:outline-none focus:shadow-outline">Cancel</button>
-              <button onClick={saveChanges}
-                className="bg-white hover:bg-blue-500 hover:text-white text-sm text-blue-500 font-bold ml-4 py-1.5 px-6 rounded-md focus:outline-none focus:shadow-outline" type="submit">Save Changes</button>
-            </div>}
+								<button
+									onClick={revertBack}
+									className="bg-white hover:bg-red-500 hover:text-white text-sm text-red-500 font-bold py-1.5 px-6 rounded-md focus:outline-none focus:shadow-outline">
+									Cancel
+								</button>
+								<button
+									onClick={saveChanges}
+									disabled={!clientAuthReady}
+									className="disabled:pointer-events-none bg-white hover:bg-blue-500 hover:text-white text-sm text-[#2E3B4E] font-bold ml-4 py-1.5 px-6 rounded-md focus:outline-none focus:shadow-outline"
+									type="submit">
+									Save Changes
+								</button>
+							</div>
+						)}
 					</div>
 					<div className="w-full mb-12">
-						<div className={`${globalStyles.heading.h2.black} mb-2`}>Images</div>
-						{console.log(info['images'])}
-            {info['images'] && info['images'][0] ?
-							<div className="flex">
-                {info['images'].map((image, i) => {
-								
+						<div className={`${globalStyles.heading.h2.black} mb-2`}>
+							Images
+						</div>
+						{info['images'] && info['images'][0] ? (
+							<div className="flex flex-wrap gap-y-2">
+								{info['images'].map((image, i) => {
 									return (
 										<div className="mr-2" key={i}>
-                      <Image src={image} alt="image" width={200} height={200} />
+											<Image src={image} alt="image" width={200} height={200} />
 										</div>
 									)
 								})}
-              </div> :
+							</div>
+						) : (
 							<div className="italic font-light">No images for this report</div>
-            }
+						)}
 					</div>
 					<div className="mb-8">
 						<button
-							className="flex flex-row text-sm bg-white px-4 border-none text-black py-1 rounded-md shadow hover:shadow-none" onClick={SendLinkByMail}> 
-							<BsShareFill className="my-1" size = {15}/> 
+							type="button"
+							className="flex flex-row text-sm bg-white px-4 border-none text-black py-1 rounded-md shadow hover:shadow-none"
+							onClick={() => setShareReportModal(true)}>
+							<BsShareFill className="my-1" size={15} />
 							<div className="px-3 py-1">Share The Report</div>
 						</button>
+						{customClaims?.admin && (
+							<button
+								type="button"
+								className="mt-3 flex flex-row text-sm bg-white px-4 border-none text-black py-1 rounded-md shadow hover:shadow-none"
+								onClick={() => setMoveReportModal(true)}>
+								<div className="px-3 py-1">Move to agency</div>
+							</button>
+						)}
+						{info?.agency && customClaims?.admin && (
+							<p className="mt-2 text-sm font-light">
+								Currently in <span className="font-semibold">{info.agency}</span>
+								{info?.state ? ` (${info.state})` : ''}
+							</p>
+						)}
+						{moveStatus && (
+							<p className="mt-2 text-sm italic font-light" role="status">
+								{moveStatus}
+							</p>
+						)}
 					</div>
 				</div>
 			</div>
+			{shareReportModal && (
+				<ShareReportModal
+					reportId={reportId}
+					reportTitle={info?.title || ''}
+					closeModal={setShareReportModal}
+				/>
+			)}
+			{moveReportModal && customClaims?.admin && (
+				<MoveReportModal
+					reportId={reportId}
+					reportState={info?.state || ''}
+					currentAgencyId={info?.agencyId || ''}
+					currentAgencyName={info?.agency || ''}
+					loadAgencies={() => fetchAgencyOptions(db)}
+					moveReport={(id, state) => moveReportToState(db, id, state, user)}
+					onMoved={(result) => {
+						setMoveStatus(
+							`Moved to ${result.agencies.map((a) => a.name).join(', ')}`,
+						)
+						router.replace(router.asPath)
+					}}
+					closeModal={setMoveReportModal}
+				/>
+			)}
 		</div>
 	)
 }
 
-export default ReportDetails
+// State is seeded from props once and the notes field is uncontrolled, so remount per report.
+export default function ReportDetailsPage(props) {
+	const { query } = useRouter()
+	return <ReportDetails key={query.reportId} {...props} />
+}
+
+export async function getServerSideProps({
+	req,
+	res,
+	params,
+	locale,
+	defaultLocale,
+	resolvedUrl,
+}) {
+	res.setHeader('Cache-Control', 'private, no-store')
+	const session = await getSession(req)
+	const reportSnap = session
+		? await adminDb.collection('reports').doc(params.reportId).get()
+		: null
+	const report = reportSnap?.data()
+	const result = reportPageResult({
+		session,
+		report,
+		resolvedUrl,
+		locale,
+		defaultLocale,
+	})
+	if (!result.allowed) {
+		return result
+	}
+
+	const initialAuth = toInitialAuth(session)
+	const knownAgencyId = knownAgencyIdForReport(
+		report,
+		initialAuth.claims.agencyId,
+	)
+	const agencyIdPromise =
+		knownAgencyId || !report.agency
+			? Promise.resolve(knownAgencyId)
+			: adminDb
+					.collection('agency')
+					.where('name', '==', report.agency)
+					.limit(1)
+					.get()
+					.then((snap) => snap.docs[0]?.id ?? '')
+	const [reporterSnap, defaultsSnap, agencyId, agencyTagsSnap] =
+		await Promise.all([
+			report.userID
+				? adminDb.collection('mobileUsers').doc(report.userID).get()
+				: null,
+			adminDb.doc(TAG_DEFAULTS_DOC_PATH.join('/')).get(),
+			agencyIdPromise,
+			agencyIdPromise.then((id) =>
+				id ? adminDb.collection('tags').doc(id).get() : null,
+			),
+		])
+	const reporter = reporterSnap?.data()
+	const agencyTagsDoc = agencyTagsSnap?.data()
+	const agencyLabels = agencyLabelsFromTagsDoc(agencyTagsDoc)
+
+	return {
+		props: {
+			initialAuth,
+			initialReport: serializeFirestore({
+				info: report,
+				reporterInfo: { name: reporter?.name, email: reporter?.email },
+				agencyId,
+				agencyLabels: agencyLabels.active,
+				agencyLabelColors: agencyLabels.colors,
+				tagLabelMap: buildMergedAgencyTagLabelMap(
+					normalizeTagDefaults(defaultsSnap.data()),
+					agencyTagsDoc,
+				),
+			}),
+			...(await serverSideTranslations(locale, [
+				'Home',
+				'Report',
+				'NewReport',
+				'Profile',
+				'Navbar',
+				'ShareReport',
+			])),
+		},
+	}
+}

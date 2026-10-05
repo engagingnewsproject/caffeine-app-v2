@@ -31,29 +31,22 @@ import DeleteModal from '../modals/common/DeleteModal'
 import { useRouter } from 'next/router'
 import LanguageSwitcher from '../layout/LanguageSwitcher'
 import {
-  collection,
-  getDocs,
   getDoc,
-  query,
-  where,
   updateDoc,
   doc,
 } from 'firebase/firestore'
 import {
-  getStorage,
   ref,
   uploadBytesResumable,
   getDownloadURL,
 } from 'firebase/storage'
-import { db, auth } from '../../config/firebase'
+import { db, auth, storage } from '../../config/firebase'
 import { State, City } from 'country-state-city'
-import Select from 'react-select'
-import Image from 'next/image'
 import { useTranslation } from 'next-i18next'
 import globalStyles from '../../styles/globalStyles'
-import LocationUpdate from '../partials/forms/LocationUpdate'
 import { Button } from '@material-tailwind/react'
-
+import AgencySettingsForm from './AgencySettingsForm'
+import UserSettingsForm from './UserSettingsForm'
 /**
  * Profile Component
  *
@@ -87,32 +80,15 @@ const Profile = ({ customClaims }) => {
   const [userUpdate, setUserUpdate] = useState(false)
   const [agencyState, setAgencyState] = useState(null)
   const [agencyCity, setAgencyCity] = useState(null)
-  const [agencyLocationEdit, setAgencyLocationEdit] = useState(false)
-  const [isSearchable, setIsSearchable] = useState(true)
+  const [agencySectionEditing, setAgencySectionEditing] = useState(false)
   const [errors, setErrors] = useState({})
   const imgPicker = useRef(null)
-  const storage = getStorage()
-  const [editLogo, setEditLogo] = useState(false)
   const [images, setImages] = useState([])
-  const [imageURLs, setImageURLs] = useState([])
   const [agencyUpdate, setAgencyUpdate] = useState(false)
   const [agencyUpdateMessageShow, setAgencyUpdateMessageShow] = useState(false)
 
   const style = {
-    sectionContainer: 'w-full h-full flex flex-col mb-5 overflow-visible',
     sectionWrapper: 'flex flex-col',
-    button:
-      'bg-blue-600 col-start-3 self-end hover:bg-blue-700 text-sm text-white font-semibold py-2 px-6 rounded-md focus:outline-none focus:shadow-outline',
-    buttonHollow:
-      'bg-sky-100 hover:bg-blue-200 text-blue-600 font-normal py-2 px-6 border border-blue-600 rounded-xl',
-    input:
-      'text-md font-light bg-white rounded-xl p-4 border-none w-full focus:text-gray-700 focus:bg-white focus:border-blue-400 focus:outline-none resize-none',
-    inputSelect:
-      'border-gray-300 col-span-1 rounded-md w-full h-auto py-3 px-3 text-sm text-gray-700 leading-tight focus:outline-none focus:shadow-outline',
-    buttonCancel:
-      ' col-start-3 border-solid border-red-500 self-end hover:bg-blue-700 text-sm text-red-500 font-semibold py-2 px-6 rounded-md focus:outline-none focus:shadow-outline',
-    fileUploadButton:
-      'block flex flex-col text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold  file:bg-sky-100 file:text-blue-500 hover:file:bg-blue-100 file:cursor-pointer',
   }
 
   /**
@@ -134,22 +110,29 @@ const Profile = ({ customClaims }) => {
 
   /**
    * Fetches the agency data for the current user.
+   * Prefer claim agencyId (doc read); avoid agencyUsers collection queries under scoped rules.
    */
   const getAgencyData = async () => {
-    const agencyCollection = collection(db, 'agency')
-    const q = query(
-      agencyCollection,
-      where('agencyUsers', 'array-contains', user['email'])
-    )
-    const querySnapshot = await getDocs(q)
-
-    if (!querySnapshot.empty) {
-      const agencyDoc = querySnapshot.docs[0]
-      setAgency({ id: agencyDoc.id, ...agencyDoc.data() })
-      setAgencyName(agencyDoc.data().name)
-      setAgencyState(agencyDoc.data().state)
-      setAgencyCity(agencyDoc.data().city)
-      // console.log('Agency data fetched:', agencyDoc.data())
+    try {
+      let agencyDocId =
+        typeof customClaims?.agencyId === 'string' ? customClaims.agencyId : ''
+      if (!agencyDocId) {
+        const claims = await verifyRole()
+        agencyDocId =
+          typeof claims?.agencyId === 'string' ? claims.agencyId : ''
+      }
+      if (!agencyDocId) {
+        console.error('Agency profile: no agencyId on claims')
+        return
+      }
+      const agencySnap = await getDoc(doc(db, 'agency', agencyDocId))
+      if (!agencySnap.exists()) return
+      setAgency({ id: agencySnap.id, ...agencySnap.data() })
+      setAgencyName(agencySnap.data().name)
+      setAgencyState(agencySnap.data().state)
+      setAgencyCity(agencySnap.data().city)
+    } catch (error) {
+      console.error('Error fetching agency data:', error)
     }
   }
 
@@ -177,7 +160,7 @@ const Profile = ({ customClaims }) => {
     if (isAgency) {
       getAgencyData()
     }
-  }, [isAgency])
+  }, [isAgency, customClaims?.agencyId])
 
   /**
    * Saves the updated agency data to Firestore.
@@ -205,12 +188,63 @@ const Profile = ({ customClaims }) => {
   }
 
   /**
-   * Handles the logo edit action.
-   * @param {React.MouseEvent} e - The event object.
+   * Maps saved agency city/state strings to country-state-city select options.
+   * @param {string|null} stateName
+   * @param {string|null} cityName
+   * @param {string} [country='US']
+   * @returns {{ state: Object|null, city: Object|null }}
    */
-  const handleLogoEdit = (e) => {
-    e.preventDefault()
-    setEditLogo(!editLogo)
+  const resolveAgencyLocationOptions = (
+    stateName,
+    cityName,
+    country = 'US'
+  ) => {
+    if (!stateName) return { state: null, city: null }
+
+    const targetState = String(stateName).toLowerCase()
+    const state =
+      State.getStatesOfCountry(country).find(
+        (option) =>
+          option.name.toLowerCase() === targetState ||
+          option.isoCode.toLowerCase() === targetState
+      ) || null
+
+    if (!state || !cityName) return { state, city: null }
+
+    const targetCity = String(cityName).toLowerCase()
+    const city =
+      City.getCitiesOfState(state.countryCode, state.isoCode).find(
+        (option) => option.name.toLowerCase() === targetCity
+      ) || null
+
+    return { state, city }
+  }
+
+  /**
+   * Enters agency section edit mode and prefills location selects.
+   */
+  const handleAgencyEdit = () => {
+    const { state, city } = resolveAgencyLocationOptions(
+      agencyState || agency?.state,
+      agencyCity || agency?.city
+    )
+    setData({ country: 'US', state, city })
+    setAgencySectionEditing(true)
+    setErrors({})
+  }
+
+  /**
+   * Cancels agency section edit and restores saved agency values.
+   */
+  const handleAgencyCancel = () => {
+    setAgencyName(agency?.name || '')
+    setAgencyState(agency?.state ?? null)
+    setAgencyCity(agency?.city ?? null)
+    setData({ country: 'US', state: null, city: null })
+    setImages([])
+    if (imgPicker.current) imgPicker.current.value = ''
+    setErrors({})
+    setAgencySectionEditing(false)
   }
 
   /**
@@ -223,14 +257,26 @@ const Profile = ({ customClaims }) => {
       selectedImages.push(e.target.files[i])
     }
     setImages(selectedImages)
-    // console.log('Selected images:', selectedImages)
   }
 
+  /**
+   * Removes a pending logo image from the selection.
+   * @param {number} index
+   */
+  const handleRemoveImage = (index) => {
+    setImages((prev) => prev.filter((_, i) => i !== index))
+    if (imgPicker.current) imgPicker.current.value = ''
+  }
+  
   /**
    * Handles the image upload process.
    * @returns {Promise<Array<string>>} - An array of uploaded image URLs.
    */
   const handleUpload = async () => {
+    if (!storage) {
+      console.warn('Storage not available'); 
+      return []; 
+    }
     const uploadPromises = images.map((image) => {
       const storageRef = ref(
         storage,
@@ -252,10 +298,7 @@ const Profile = ({ customClaims }) => {
     })
 
     try {
-      const urls = await Promise.all(uploadPromises)
-      setImageURLs(urls)
-      // console.log('Uploaded image URLs:', urls)
-      return urls
+      return await Promise.all(uploadPromises)
     } catch (error) {
       console.error('Error uploading images:', error)
       return []
@@ -285,21 +328,12 @@ const Profile = ({ customClaims }) => {
   }
 
   /**
-   * Handles the agency location edit action.
-   * @param {React.MouseEvent} e - The event object.
-   */
-  const handleAgencyLocationChange = (e) => {
-    e.preventDefault()
-    setAgencyLocationEdit(!agencyLocationEdit)
-  }
-
-  /**
    * Handles changes in the agency state selection.
    * @param {Object} state - The selected state option.
    */
   const handleAgencyStateChange = (state) => {
     setData((data) => ({ ...data, state: state, city: null }))
-    setAgencyState(state.name) // Set state name
+    setAgencyState(state.name)
   }
 
   /**
@@ -308,7 +342,7 @@ const Profile = ({ customClaims }) => {
    */
   const handleAgencyCityChange = (city) => {
     setData((data) => ({ ...data, city: city !== null ? city : null }))
-    setAgencyCity(city.name) // Set city name
+    setAgencyCity(city.name)
   }
 
   /**
@@ -323,36 +357,34 @@ const Profile = ({ customClaims }) => {
       allErrors.name = 'Please enter an agency name.'
     }
 
-    if (agencyState === null && agencyLocationEdit) {
+    if (agencySectionEditing && data.state === null && !agencyState) {
       allErrors.state = 'Please enter a state.'
     }
 
-    if (agencyCity === null && agencyLocationEdit) {
+    if (agencySectionEditing && data.city === null && !agencyCity) {
       allErrors.city = 'Please enter a city.'
     }
 
     if (Object.keys(allErrors).length === 0) {
-      const imageURLs = await handleUpload() // Ensure images are uploaded before saving
+      const imageURLs = await handleUpload()
       await saveAgency(imageURLs)
-      // Reset states after submission.
       setImages([])
-      setEditLogo(false)
-      // Reset the form fields or other dependent states if necessary
-      setData({ ...data, state: null, city: null }) // Reset location data if used for form fields
+      setData({ country: 'US', state: null, city: null })
       setAgency({
         ...agency,
+        name: agencyName,
+        state: agencyState,
+        city: agencyCity,
         logo: imageURLs.length > 0 ? imageURLs : agency.logo,
       })
-      setAgencyUpdate(false) // Allow new updates
+      setAgencySectionEditing(false)
+      setAgencyUpdate(false)
       setAgencyUpdateMessageShow(true)
-      console.log('Form submitted successfully')
-
       setTimeout(() => {
         setAgencyUpdateMessageShow(false)
       }, 5000)
     } else {
       setErrors(allErrors)
-      console.log('Form submission errors:', allErrors)
     }
   }
 
@@ -410,7 +442,7 @@ const Profile = ({ customClaims }) => {
    */
   const languageToggle = () => (
     <div className="flex justify-between mx-0 my-6 tracking-normal items-center">
-      <div className="text-xl font-extrabold text-blue-600">
+      <div className="text-xl font-extrabold text-[#2E3B4E]">
         {t('selectLanguage')}
       </div>
       <div>
@@ -419,262 +451,78 @@ const Profile = ({ customClaims }) => {
     </div>
   )
 
-  /**
-   * Renders the agency settings section.
-   * @returns {JSX.Element} The agency settings form.
-   */
-  const agencySettings = () => (
-    <div className="z-0 flex-col m-6 bg-slate-100">
-      <div className="text-xl font-extrabold text-blue-600 tracking-wider">
-        Agency Settings
-      </div>
-      <div className="w-full h-auto">
-        <form
-          id="agencyDesign"
-          className="flex flex-col"
-          onSubmit={handleSubmit}>
-          <div className="mt-4 mb-4 grid gap-4">
-            <div className="grid grid-cols-4 items-center">
-              <div className="col-span-1">Agency Name</div>
-              <div className="col-span-3">
-                <input
-                  id="agency_name"
-                  onChange={(e) => {
-                    handleAgencyNameChange(e)
-                  }}
-                  placeholder="Agency name"
-                  type="text"
-                  className={style.input}
-                  value={agencyName}
-                />
-                {errors.name && (
-                  <span className="text-red-500 text-xs">{errors.name}</span>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center">
-              <div className="col-span-1">Agency Location</div>
-              <div className="col-span-3 grid grid-cols-8 items-center bg-white rounded-md px-3">
-                <div
-                  className={`col-span-8 ${
-                    agencyLocationEdit === false
-                      ? ' visible relative'
-                      : ' hidden absolute'
-                  }`}
-                  onClick={handleAgencyLocationChange}>
-                  <div className={style.input}>{`${agencyCity || ''}, ${
-                    agencyState || ''
-                  }`}</div>
-                </div>
-                <Select
-                  className={` col-start-1 row-start-1 col-span-3 ${
-                    (style.inputSelect,
-                    agencyLocationEdit === true
-                      ? ' visible relative'
-                      : ' hidden absolute ')
-                  }`}
-                  id="state"
-                  type="text"
-                  placeholder="State"
-                  isSearchable={isSearchable}
-                  value={data.state}
-                  options={State.getStatesOfCountry(data.country)}
-                  getOptionLabel={(options) => options['name']}
-                  getOptionValue={(options) => options['name']}
-                  label="state"
-                  onChange={(state) => {
-                    handleAgencyStateChange(state)
-                  }}
-                />
-                {errors.state && data.state === null && (
-                  <span className="text-red-500 text-xs col-start-1 col-span-3">
-                    {errors.state}
-                  </span>
-                )}
-                <Select
-                  className={`${
-                    (style.inputSelect,
-                    agencyLocationEdit === true
-                      ? ' visible relative'
-                      : ' hidden absolute')
-                  } ml-4 p-3 col-start-4 col-span-3 row-start-1`}
-                  id="city"
-                  type="text"
-                  placeholder="City"
-                  value={data.city}
-                  options={City.getCitiesOfState(
-                    data.state?.countryCode,
-                    data.state?.isoCode
-                  )}
-                  getOptionLabel={(options) => options['name']}
-                  getOptionValue={(options) => options['name']}
-                  onChange={(city) => {
-                    handleAgencyCityChange(city)
-                  }}
-                />
-                {errors.city && data.city === null && (
-                  <span className="text-red-500 text-xs col-span-3 col-start-4">
-                    {errors.city}
-                  </span>
-                )}
-                <div
-                  className={`text-red-500 cursor-pointer col-start-7 row-start-1 col-auto${
-                    agencyLocationEdit === true
-                      ? ' visible block'
-                      : ' hidden absolute'
-                  }`}
-                  onClick={handleAgencyLocationChange}>
-                  Cancel
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center">
-              <div className="col-span-1">Agency Logo</div>
-              {editLogo ? (
-                <div
-                  className={`${style.inputSelect} bg-white col-span-3 flex items-center`}>
-                  <label>
-                    <span className="sr-only">Choose agency logo</span>
-                    <input
-                      className={`${style.fileUploadButton}`}
-                      id="multiple_files"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      ref={imgPicker}
-                    />
-                    {errors.image && image === null && (
-                      <span className="text-red-500">{errors.image}</span>
-                    )}
-                  </label>
-                  <div className="col-span-2">
-                    {imageURLs.map((url, i = self.crypto.randomUUID()) => (
-                      <Image
-                        src={url}
-                        key={i}
-                        width={100}
-                        height={50}
-                        className="inline h-auto"
-                        alt={`image-upload-${i}`}
-                      />
-                    ))}
-                  </div>
-                  <div
-                    className="text-red-500 cursor-pointer"
-                    onClick={handleLogoEdit}>
-                    Cancel
-                  </div>
-                </div>
-              ) : (
-                <div
-                  className={`${style.inputSelect} bg-white col-span-3`}
-                  onClick={handleLogoEdit}>
-                  {agency.logo && agency.logo.length > 0 && (
-                    <Image
-                      src={agency.logo[0]}
-                      alt={`${agency.name} logo`}
-                      width={70}
-                      height={100}
-                      className='h-auto'
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex justify-end items-center">
-            {agencyUpdateMessageShow && (
-              <div className="transition-opacity opacity-100">
-                Agency updated
-              </div>
-            )}
-            <Button color="blue" type="submit">
-              Update Agency
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
 // todo: change to "Disable account"
   /**
-   * Renders the delete account confirmation modal.
-   * @returns {JSX.Element} The delete account confirmation modal.
+   * Renders logout + delete account actions (outside edit sections).
+   * @returns {JSX.Element}
    */
-  const deleteAccount = () => (
-    <div className="self-end m-6">
-      <div className="flex justify-between mx-0 md:mx-6 my-6 tracking-normal items-center">
+  const accountActions = () => (
+    <div className="mb-8 p-4">
+      <div className="flex justify-between tracking-normal items-center mb-4">
+        <div className="font-light">{t('logout')}</div>
+        <Button
+          variant="outlined"
+          color="blue"
+          onClick={() => setLogoutModal(true)}>
+          {t('logout')}
+        </Button>
+      </div>
+      <div className="flex justify-between tracking-normal items-center">
         <div className="font-light mr-4">{t('delete')}</div>
-        <button
+        <Button
           onClick={() => setDeleteModal(true)}
-          className="bg-sky-100 hover:bg-red-200 text-red-600 font-normal py-2 px-6 border border-red-600 rounded-xl">
+          variant="outlined" color="red" type="button">
           {t('request')}
-        </button>
+        </Button>
       </div>
     </div>
   )
 
   return (
     <div
+      data-component="Profile"
       className={`${
         customClaims === null
           ? globalStyles.page.wrap
           : globalStyles.page.wrap + ' md:p-12'
       }`}>
       <div className={style.sectionWrapper}>
-        <div className={`${globalStyles.heading.h1.blue} ml-16 p-4 md:ml-0 md:p-0`}>{t('account')}</div>
-        {isAgency && (
-          <div className="flex justify-between m-6 tracking-normal items-center">
-            <div className="font-light">
-              {agency.length > 1 ? 'Agencies' : 'Agency'}
-            </div>
-            <div className="flex gap-2 my-2 tracking-normal items-center">
-              <div className="font-light">{agencyName}</div>
-            </div>
-          </div>
-        )}
-        <div className="flex flex-col m-6 md:flex-row justify-start md:justify-between tracking-normal items-stretch md:items-center">
-          <div className="font-semibold text-sm md:font-light">
-            {t('email')}
-          </div>
-          <div className="flex gap-2 my-2 tracking-normal items-center justify-between">
-            <div className="font-light">{user.email}</div>
-            <Button
-              variant="outlined"
-              color="blue"
-              onClick={() => setEmailModal(true)}>
-              {t('editEmail')}
-            </Button>
-          </div>
-        </div>
-        <div className="flex m-6 justify-between tracking-normal items-center">
-          <div className="font-light">{t('resetPassword')}</div>
-          <Button
-            variant="outlined"
-            color="blue"
-            onClick={() => setOpenModal(true)}>
-            {t('editPassword')}
-          </Button>
-        </div>
-        <div className="flex m-6 justify-between tracking-normal items-center">
-          <div className="font-light">{t('logout')}</div>
-          <Button
-            variant="outlined"
-            color="blue"
-            onClick={() => setLogoutModal(true)}>
-            {t('logout')}
-          </Button>
-        </div>
-
-        <LocationUpdate
+        <UserSettingsForm
+          isAgency={isAgency}
+          agency={agency}
+          agencyName={agencyName}
+          email={user.email}
           user={user}
           userData={userData}
           setUserData={setUserData}
+          onEditEmail={() => setEmailModal(true)}
+          onEditPassword={() => setOpenModal(true)}
         />
 
         {!isAgency && !isAdmin && languageToggle()}
-        {isAgency && agencySettings()}
-        {deleteAccount()}
+        {isAgency && (
+          <AgencySettingsForm
+            agency={agency}
+            agencyName={agencyName}
+            agencyCity={agencyCity}
+            agencyState={agencyState}
+            data={data}
+            errors={errors}
+            images={images}
+            imgPicker={imgPicker}
+            isEditing={agencySectionEditing}
+            agencyUpdateMessageShow={agencyUpdateMessageShow}
+            onEdit={handleAgencyEdit}
+            onCancel={handleAgencyCancel}
+            onSubmit={handleSubmit}
+            onNameChange={handleAgencyNameChange}
+            onStateChange={handleAgencyStateChange}
+            onCityChange={handleAgencyCityChange}
+            onImageChange={handleImageChange}
+            onRemoveImage={handleRemoveImage}
+          />
+        )}
+        {accountActions()}
       </div>
 
       {openModal && <UpdatePwModal setOpenModal={setOpenModal} />}

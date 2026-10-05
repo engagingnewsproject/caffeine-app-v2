@@ -11,17 +11,21 @@
  * - Login navigation
  * - User role verification
  * 
- * @author Caffeine Dashboard Team
+ * @author Truth Sleuth Local Team
  * @version 1.0.0
  */
 
 import { useRouter } from 'next/router'
 import React, { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { useAuth } from '../context/AuthContext'
 import {signOut} from 'firebase/auth'
 import { auth } from '../config/firebase'
 import Head from 'next/head'
+import { GiMagnifyingGlass } from 'react-icons/gi'
+import { Typography } from '@material-tailwind/react'
+import LanguageSwitcher from '../components/layout/LanguageSwitcher'
+import { useTranslation } from 'next-i18next'
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations'
 
 /**
  * VerifyEmail component for email verification flow
@@ -34,13 +38,13 @@ import Head from 'next/head'
  */
 const VerifyEmail = () => {
     const router = useRouter()
-    // const [signUpError, setSignUpError] = useState("")
+    const { t } = useTranslation('Welcome')
     
     // Authentication context and verification functions
-    const { user, signup, verifyEmail, verifyRole, customClaims, setCustomClaims} = useAuth()
+    const { verifyEmail, verifyRole } = useAuth()
     
-    // Error state - shows error if email is not verified
-    const [signUpError, setSignUpError] = useState(!auth.currentUser.emailVerified)
+    // Shown after user requests a new verification email
+    const [emailResent, setEmailResent] = useState(false)
 
     // User role state for conditional rendering
     const [userRole, setUserRole] = useState(null)
@@ -69,10 +73,10 @@ const VerifyEmail = () => {
      * @returns {Promise<void>}
      */
     const handleVerifyEmail = async (e) => {
-      setSignUpError("New verification email sent.")
+      setEmailResent(true)
 
         try {
-          const userVerified = await verifyEmail(auth.currentUser)
+          await verifyEmail(auth.currentUser)
             
         } catch (err) {
           console.log(err)
@@ -94,47 +98,51 @@ const VerifyEmail = () => {
   return (
 		<>
 			<Head>
-				<title>Verify Email | Caffeine Dashboard</title>
+				<title>{t('verifyEmailPageTitle')}</title>
 			</Head>
-			<div className="w-screen h-screen flex justify-center items-center">
-				<div className="w-full max-w-sm font-light">
+			<div data-component="verifyEmail" className="w-screen h-screen flex justify-center items-center">
+				<div className="w-full max-w-md font-light bg-white rounded-md p-6">
 					{/* Logo/branding section */}
-					<div className="flex justify-center mb-4">
-						<div className="w-24 h-24 font-extralight rounded-full tracking-widest flex justify-center items-center text-white bg-blue-500">
-							MOODY
+					<div className="flex flex-col items-center justify-center mb-4">
+						<div className="bg-blue-600 p-7 rounded-full mb-2">
+							<GiMagnifyingGlass size={30} className="fill-white" />
 						</div>
+						<Typography variant="small" className="text-xs font-semibold text-[#2E3B4E]">
+							Truth Sleuth Local
+						</Typography>
 					</div>
 					
 					{/* Main content section */}
 					<div className="mb-4">
-						{/* Error message display */}
-						{signUpError?.length !== 0 && <div>{signUpError}</div>}
+						{emailResent && <div>{t('verifyEmailSent')}</div>}
 						
 						{/* Agency-specific verification instructions */}
 						{userRole?.agency ? (
 							<div>
-								<p className="text-lg font-bold text-blue-600 tracking-wider pt-2">
-									Email Verification
+								<p className="text-lg font-bold text-[#2E3B4E] tracking-wider pt-2">
+									{t('verifyEmailHeading')}
 								</p>
 
 								<div>
-									Upon creating an account, you will be asked to verify your
-									email.
+									{t('verifyEmailAgencyIntro')}
 								</div>
 								<ol className="list-disc pl-4">
-									<li>Click the link in the verification email.</li>
-									<li>
-										Log in to the dashboard using your new account information.
-									</li>
-									<li>
-										If needed, you can change your agency name and location
-										under your profile.
-									</li>
+									<li>{t('verifyEmailAgencyStep1')}</li>
+									<li>{t('verifyEmailAgencyStep2')}</li>
+									<li>{t('verifyEmailAgencyStep3')}</li>
 								</ol>
+								<p className="mt-3 text-sm text-gray-600">
+									{t('verifyEmailSpamTip')}
+								</p>
 							</div>
 						) : (
 							/* General user verification instructions */
-							<h3>Check your inbox to verify your email in order to log in.</h3>
+							<div>
+								<h3>{t('verifyEmailUserPrompt')}</h3>
+								<p className="mt-2 text-sm text-gray-600">
+									{t('verifyEmailSpamTip')}
+								</p>
+							</div>
 						)}
 					</div>
 
@@ -143,14 +151,17 @@ const VerifyEmail = () => {
 						<button
 							className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 mb-2 px-6 rounded focus:outline-none focus:shadow-outline"
 							onClick={handleVerifyEmail}>
-							Resend email
+							{t('verifyEmailResend')}
 						</button>
 						<button
 							className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 mb-2 px-6 rounded focus:outline-none focus:shadow-outline"
 							onClick={handleLogin}>
-							Log In
+							{t('loginButton')}
 						</button>
 					</p>
+					<div className="flex justify-center items-center p-6 gap-1">
+						<LanguageSwitcher />
+					</div>
 				</div>
 			</div>
 		</>
@@ -158,3 +169,12 @@ const VerifyEmail = () => {
 }
 
 export default VerifyEmail
+
+export async function getStaticProps(context) {
+  const { locale } = context
+  return {
+    props: {
+      ...(await serverSideTranslations(locale, ['Welcome'])),
+    },
+  }
+}

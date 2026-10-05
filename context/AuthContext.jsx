@@ -13,10 +13,11 @@
  * @requires react
  */
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { 
     createUserWithEmailAndPassword,
     onAuthStateChanged,
+    onIdTokenChanged,
     signInWithEmailAndPassword,
     reauthenticateWithCredential,
     updatePassword,
@@ -29,12 +30,12 @@ import {
     EmailAuthProvider
 } from 'firebase/auth'
 
-import {
-  httpsCallable,
-} from "firebase/functions";
-import { auth, app, db, functions } from '../config/firebase'
+import { httpsCallable } from 'firebase/functions'
+import { auth, app, db } from '../config/firebase'
 import { getDoc, doc, setDoc } from "firebase/firestore";
 import moment from 'moment'
+import LoadingSpinner from '../components/ui/LoadingSpinner'
+import { initialAuthState, normalizeCustomClaims } from '../lib/session'
 
 /**
  * Authentication Context for managing user state and authentication operations.
@@ -42,6 +43,36 @@ import moment from 'moment'
  * @type {React.Context<Object>}
  */
 const AuthContext = createContext({})
+
+export const SESSION_SYNC_FAILED = 'session/sync-failed'
+
+// Login, logout and the token listener fire for the same change; share the in-flight request.
+let lastSessionSync = null
+
+async function syncServerSession(firebaseUser) {
+    const idToken = firebaseUser ? await firebaseUser.getIdToken() : null
+    if (lastSessionSync?.idToken === idToken) return lastSessionSync.promise
+
+    const request = idToken
+        ? {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+        }
+        : { method: 'DELETE' }
+    const promise = fetch('/api/session', request)
+        .then((res) => {
+            if (!res.ok) throw new Error(`/api/session responded ${res.status}`)
+        })
+        .catch((cause) => {
+            if (lastSessionSync?.promise === promise) lastSessionSync = null
+            const error = new Error('Could not sync the server session', { cause })
+            error.code = SESSION_SYNC_FAILED
+            throw error
+        })
+    lastSessionSync = { idToken, promise }
+    return promise
+}
 
 /**
  * Custom hook to access the authentication context.
@@ -69,72 +100,158 @@ export const useAuth = () => useContext(AuthContext)
  *   <App />
  * </AuthContextProvider>
  */
-export const AuthContextProvider = ({children}) => {
+export const AuthContextProvider = ({ children, initialAuth }) => {
 
-    const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(true)
+    const [seed] = useState(() => initialAuthState(initialAuth))
+    const [user, setUser] = useState(seed.user)
+    const [loading, setLoading] = useState(seed.loading)
+    /** False until the first ID-token claims read finishes (or sign-out clears them). */
+    const [claimsReady, setClaimsReady] = useState(seed.claimsReady)
+    const [clientAuthReady, setClientAuthReady] = useState(false)
     const [userRole, setUserRole] = useState('user')
-    const [customClaims, setCustomClaims] = useState({agency: false, admin: false})
+    const [customClaims, setCustomClaims] = useState(seed.customClaims)
+    // Server-verified uid; its seeded claims stay valid until the client re-reads them.
+    const seededUid = useRef(seed.user?.accountId ?? null)
+
+    // Functions instance created on the client so callables work (avoids null during SSR).
+    // If the SDK throws "Service functions is not available" (e.g. in some Next.js/build envs), we degrade gracefully.
+    const [functionsInstance, setFunctionsInstance] = useState(null)
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        let cancelled = false
+        const init = () => {
+            import('firebase/functions')
+                .then(({ getFunctions }) => {
+                    if (cancelled) return
+                    try {
+                        const fn = getFunctions(app, 'us-central1')
+                        setFunctionsInstance(fn)
+                    } catch (e) {
+                        setFunctionsInstance(null)
+                        if (process.env.NODE_ENV === 'development') {
+                            console.warn(
+                                'Cloud Functions client unavailable (e.g. "Service functions is not available"). Admin features that use callables will be limited.',
+                            )
+                        }
+                    }
+                })
+                .catch(() => {
+                    if (!cancelled) setFunctionsInstance(null)
+                })
+        }
+        const id = setTimeout(init, 0)
+        return () => {
+            cancelled = true
+            clearTimeout(id)
+        }
+    }, [])
 
     /**
      * Effect hook to monitor authentication state changes.
-     * 
-     * This effect sets up a listener for Firebase authentication state changes.
-     * When a user signs in, it fetches their location data, sets up user state,
-     * and verifies their custom claims for role-based access control.
+     *
+     * Sets React `user` as soon as Firebase Auth reports a session (so route
+     * guards do not bounce a successful login). Location id and custom claims
+     * are loaded afterward without blocking that initial setUser.
      */
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            const keepSeededClaims = !!user && seededUid.current === user.uid
+            seededUid.current = null
+            setClientAuthReady(true)
             if (user) {
-                // Fetch location data for user identification
-                const ref = await getDoc(doc(db, "locations", "Texas"))
-                const localId = ref.data()['Austin']
-                
+                // Set auth user immediately so login → /dashboard is not bounced by
+                // ProtectedRoute while Firestore/App Check are still warming up.
+                const cachedLocalId =
+                    typeof window !== 'undefined'
+                        ? localStorage.getItem('userId')
+                        : null
                 setUser({
-                    uid: localId, // Local identifier for user tracking
+                    uid: cachedLocalId || user.uid,
                     accountId: user.uid,
                     displayName: user.displayName,
-                    email: user.email
+                    email: user.email,
                 })
-                localStorage.setItem("userId", localId)
-                
-                // Verify user's custom claims for role-based access
+                if (!keepSeededClaims) setClaimsReady(false)
+                setLoading(false)
+
+                // Custom claims (includes agencyId) — non-blocking
                 user.getIdTokenResult(true)
                     .then((idTokenResult) => {
-                        // Set custom claims based on user's role
-                        if (!!idTokenResult.claims.admin) {
-                            setCustomClaims({admin: true})
-                        } else if (!!idTokenResult.claims.agency) {
-                            setCustomClaims({agency: true})
-                        } else {
-                            setCustomClaims({agency: false, admin: false})
-                        }
+                        setCustomClaims(normalizeCustomClaims(idTokenResult.claims))
                     })
                     .catch((error) => {
-                        console.log("Error fetching custom claims:", error);
-                    });
-              
+                        console.log('Error fetching custom claims:', error)
+                    })
+                    .finally(() => {
+                        setClaimsReady(true)
+                    })
+
+                // Local tracking id from locations/Texas — non-blocking
+                getDoc(doc(db, 'locations', 'Texas'))
+                    .then((ref) => {
+                        const localId = ref.data()?.['Austin']
+                        if (!localId) return
+                        localStorage.setItem('userId', localId)
+                        setUser((prev) =>
+                            prev && prev.accountId === user.uid
+                                ? { ...prev, uid: localId }
+                                : prev,
+                        )
+                    })
+                    .catch((error) => {
+                        console.log('Error fetching location id:', error)
+                    })
             } else {
-                // Clear user state when signed out
                 setUser(null)
-                setCustomClaims({agency: false, admin: false})
+                setCustomClaims(normalizeCustomClaims(null))
+                setClaimsReady(true)
+                setLoading(false)
             }
-            setLoading(false)
         })
         return () => unsubscribe()
     }, [])
 
-    // Firebase Cloud Functions for user management
-    const addAdminRole = httpsCallable(functions,'addAdminRole')
-    const addAgencyRole = httpsCallable(functions, 'addAgencyRole')
-    const viewRole = httpsCallable(functions, 'viewRole')
-    const addUserRole = httpsCallable(functions, 'addUserRole')
-    const getUserByEmail = httpsCallable(functions,'getUserByEmail')
-    const deleteUser = httpsCallable(functions,'deleteUser')
-    const disableUser = httpsCallable(functions,'disableUser')
-    const getUserRecord = httpsCallable(functions, 'getUserRecord');
-    const authGetUserList = httpsCallable(functions, 'authGetUserList')
-  
+    useEffect(() => {
+        return onIdTokenChanged(auth, (firebaseUser) => {
+            syncServerSession(firebaseUser).catch((error) => {
+                console.warn('Server session sync failed:', error)
+            })
+        })
+    }, [])
+
+    // Firebase Cloud Functions for user management - only when functions is available (browser); null during SSR/build
+    const noopCallable = () => Promise.reject(new Error('Functions not available'))
+    const callables = useMemo(() => {
+        if (!functionsInstance) {
+            return {
+                addAdminRole: noopCallable,
+                addAgencyRole: noopCallable,
+                backfillAgencyClaims: noopCallable,
+                viewRole: noopCallable,
+                addUserRole: noopCallable,
+                getUserByEmail: noopCallable,
+                deleteUser: noopCallable,
+                disableUser: noopCallable,
+                getUserRecord: noopCallable,
+                authGetUserList: noopCallable,
+            }
+        }
+        return {
+            addAdminRole: httpsCallable(functionsInstance, 'addAdminRole'),
+            addAgencyRole: httpsCallable(functionsInstance, 'addAgencyRole'),
+            backfillAgencyClaims: httpsCallable(
+                functionsInstance,
+                'backfillAgencyClaims',
+            ),
+            viewRole: httpsCallable(functionsInstance, 'viewRole'),
+            addUserRole: httpsCallable(functionsInstance, 'addUserRole'),
+            getUserByEmail: httpsCallable(functionsInstance, 'getUserByEmail'),
+            deleteUser: httpsCallable(functionsInstance, 'deleteUser'),
+            disableUser: httpsCallable(functionsInstance, 'disableUser'),
+            getUserRecord: httpsCallable(functionsInstance, 'getUserRecord'),
+            authGetUserList: httpsCallable(functionsInstance, 'authGetUserList'),
+        }
+    }, [functionsInstance])
     /**
      * Fetches a user record from Firebase Auth by UID.
      * 
@@ -146,7 +263,7 @@ export const AuthContextProvider = ({children}) => {
      */
     const fetchUserRecord = async (uid) => {
         try {
-            const result = await getUserRecord({ uid });
+            const result = await callables.getUserRecord({ uid });
             return result.data;
         } catch (error) {
             console.log(`Error fetching Auth user record uid: ${uid}`, error);
@@ -170,8 +287,9 @@ export const AuthContextProvider = ({children}) => {
      */
     const verifyEmail = (user) => {
         return new Promise((resolve, reject) => {
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://truthsleuthlocal--misinfo-5d004.us-central1.hosted.app';
             const actionCodeSettings = {
-                'url': 'https://caffeine-dashboard.netlify.app/login',
+                'url': `${baseUrl}/login`,
                 'handleCodeInApp': true,
             };
 
@@ -232,9 +350,22 @@ export const AuthContextProvider = ({children}) => {
      * @example
      * const userCredential = await login('user@example.com', 'password123');
      */
-    const login = (email, password) => {
-        return signInWithEmailAndPassword(auth, email, password);
+    const login = async (email, password) => {
+        const credential = await signInWithEmailAndPassword(auth, email, password)
+        try {
+            await syncServerSession(credential.user)
+        } catch (error) {
+            await signOut(auth)
+            throw error
+        }
+        return credential
     }
+
+    // For a client user who arrives without a server cookie; shares the listener's in-flight sync.
+    const ensureServerSession = useCallback(
+        () => syncServerSession(auth.currentUser),
+        [],
+    )
 
     /**
      * Signs out the current user and clears local state.
@@ -245,8 +376,29 @@ export const AuthContextProvider = ({children}) => {
      */
     const logout = async () => {
         setUser(null)
-        return signOut(auth);
+        await signOut(auth)
+        await syncServerSession(null).catch((error) => {
+            console.warn('Server session clear failed:', error)
+        })
     }
+
+    /**
+     * Force-refreshes the ID token and syncs customClaims (including agencyId).
+     * Use when agency is true but agencyId is still missing after login/promotion.
+     *
+     * @returns {Promise<{admin: boolean, agency: boolean, agencyId: string|null, agencyName: string|null}>}
+     */
+    const refreshCustomClaims = useCallback(async () => {
+        if (!auth.currentUser) {
+            const cleared = normalizeCustomClaims(null)
+            setCustomClaims(cleared)
+            return cleared
+        }
+        const idTokenResult = await auth.currentUser.getIdTokenResult(true)
+        const next = normalizeCustomClaims(idTokenResult.claims)
+        setCustomClaims(next)
+        return next
+    }, [])
 
     /**
      * Verifies the current user's role claims.
@@ -256,7 +408,7 @@ export const AuthContextProvider = ({children}) => {
      * @example
      * const claims = await verifyRole();
      */
-    const verifyRole = async () => {
+    const verifyRole = useCallback(async () => {
         try {
             const idTokenResult = await auth.currentUser.getIdTokenResult()
             return idTokenResult.claims
@@ -264,7 +416,7 @@ export const AuthContextProvider = ({children}) => {
             console.log("Error verifying role:", error)
             throw error;
         }
-    }
+    }, [])
     
     /**
      * Sends a password reset email to the specified address.
@@ -289,7 +441,7 @@ export const AuthContextProvider = ({children}) => {
      * await deleteAdminUser(currentUser);
      */
     const deleteAdminUser = (user) => {
-        return deleteUser(user)
+        return callables.deleteUser({ uid: user.uid })
     }
 
     /**
@@ -303,7 +455,7 @@ export const AuthContextProvider = ({children}) => {
      */
     const disableUserFunction = async (userId) => {
         try {
-            const result = await disableUser({ uid: userId });
+            const result = await callables.disableUser({ uid: userId });
             console.log('User disabled:', result.data.message);
             return result.data;
         } catch (error) {
@@ -377,20 +529,43 @@ export const AuthContextProvider = ({children}) => {
     }
     
     /**
-     * Sends a sign-in link to the specified email address.
-     * 
+     * Sends a passwordless sign-in / invite link to the given email.
+     * Optional agency fields are appended to the signup continue URL so the
+     * invitee can see which agency they are joining (association still comes
+     * from agencyUsers + addAgencyRole, not from these query params).
+     *
      * @param {string} email - Email address to send sign-in link to
+     * @param {{ agencyId?: string, agencyName?: string }} [agency]
      * @returns {Promise<void>} Resolves when email is sent
      * @throws {Error} When email sending fails
      * @example
-     * await sendSignIn('user@example.com');
+     * await sendSignIn('user@example.com', { agencyId: 'abc', agencyName: 'City PD' });
      */
-    const sendSignIn = async (email) => {
-        // Determine the base URL based on the environment
-        const isLocalhost = window.location.hostname === 'localhost'
-        const baseUrl = isLocalhost
-            ? 'http://localhost:3000/signup'
-            : 'https://caffeine-dashboard.netlify.app/signup'
+    const sendSignIn = async (email, agency = {}) => {
+        // Prefer the page origin on localhost so invite/signup testing hits local code.
+        // Production/hosted keeps NEXT_PUBLIC_APP_URL (or the App Hosting fallback).
+        const host =
+            typeof window !== 'undefined' ? window.location.hostname : ''
+        const isLocalHost =
+            host === 'localhost' || host === '127.0.0.1' || host === '[::1]'
+        const origin = (
+            isLocalHost && typeof window !== 'undefined'
+                ? window.location.origin
+                : process.env.NEXT_PUBLIC_APP_URL ||
+                  'https://truthsleuthlocal--misinfo-5d004.us-central1.hosted.app'
+        ).replace(/\/$/, '')
+        const params = new URLSearchParams()
+        const agencyId =
+            typeof agency?.agencyId === 'string' ? agency.agencyId.trim() : ''
+        const agencyName =
+            typeof agency?.agencyName === 'string' ? agency.agencyName.trim() : ''
+        if (agencyId) params.set('agencyId', agencyId)
+        if (agencyName) params.set('agencyName', agencyName)
+        // Public invites (Users page) get an explicit marker so signup never
+        // treats them as agency just because the URL is an email link.
+        if (!agencyId && !agencyName) params.set('invite', 'user')
+        const qs = params.toString()
+        const baseUrl = `${origin}/signup${qs ? `?${qs}` : ''}`
 
         const actionCodeSettings = {
             url: baseUrl,
@@ -401,7 +576,7 @@ export const AuthContextProvider = ({children}) => {
             await sendSignInLinkToEmail(auth, email, actionCodeSettings)
             // Save the email locally for later use
             window.localStorage.setItem('emailForSignIn', email)
-            console.log("Sign-in link sent to:", email);
+            console.log("Sign-in link sent to:", email, 'continueUrl:', baseUrl);
         } catch (error) {
             const errorMessage = error.message
             console.error("Error sending sign-in link:", errorMessage);
@@ -410,33 +585,45 @@ export const AuthContextProvider = ({children}) => {
     }
  
     return (
-        <AuthContext.Provider value={{ 
-            user, 
-            customClaims, 
-            setCustomClaims, 
-            login, 
-            signup, 
-            logout, 
-            resetPassword, 
-            deleteAdminUser, 
-            updateUserPassword, 
-            updateUserEmail, 
-            setPassword, 
-            verifyEmail, 
-            sendSignIn, 
-            addAdminRole, 
-            addAgencyRole, 
-            verifyRole, 
-            viewRole, 
-            addUserRole, 
-            getUserByEmail, 
-            deleteUser, 
-            disableUser: disableUserFunction, 
-            fetchUserRecord, 
-            getUserRecord, 
-            authGetUserList 
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            claimsReady,
+            clientAuthReady,
+            customClaims,
+            setCustomClaims,
+            functionsReady: !!functionsInstance,
+            login,
+            ensureServerSession,
+            signup,
+            logout,
+            resetPassword,
+            deleteAdminUser,
+            updateUserPassword,
+            updateUserEmail,
+            setPassword,
+            verifyEmail,
+            sendSignIn,
+            addAdminRole: callables.addAdminRole,
+            addAgencyRole: callables.addAgencyRole,
+            backfillAgencyClaims: callables.backfillAgencyClaims,
+            verifyRole,
+            refreshCustomClaims,
+            viewRole: callables.viewRole,
+            addUserRole: callables.addUserRole,
+            getUserByEmail: callables.getUserByEmail,
+            deleteUser: callables.deleteUser,
+            disableUser: disableUserFunction,
+            fetchUserRecord,
+            getUserRecord: callables.getUserRecord,
+            authGetUserList: callables.authGetUserList,
         }}>
-            {loading ? null : children}
+            {loading ? (
+                <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#D3D3D3] gap-3">
+                    <LoadingSpinner className="h-12 w-12 text-[#2E3B4E]" />
+                    <p className="text-sm text-gray-600">Loading…</p>
+                </div>
+            ) : children}
         </AuthContext.Provider>
     )
 }

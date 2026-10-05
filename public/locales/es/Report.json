@@ -6,13 +6,14 @@
     "description":
       "Este sistema es solamente para reportar información posiblemente errónea a nivel local o estatal.",
     "example": "Ejemplo:",
-    "correct": "Altos precios de vuelos en Austin.",
+    "correct": "Un lugar de votación local cierra temprano",
     "incorrect":
-      "Estados Unidos oficialmente alcanza 1 millón de muertes por coronavirus.",
+      "Funcionarios federales extendieron el plazo nacional de votación por una semana",
     "start": "Comenzar",
     "noShow": "No mostrar este aviso de nuevo.",
     "title": "Título",
     "link": "Enlaces",
     "image": "Subir imagen",
-    "detail": "Descripción detallada"
+    "detail": "Descripción detallada",
+    "review": "Revisar"
   }
