@@ -3,7 +3,7 @@
  *
  * A comprehensive reports management component that provides CRUD operations,
  * filtering, pagination, CSV import/export, and real-time data synchronization
- * for misinformation reports. This component handles both agency-specific and
+ * for caffeine reports. This component handles both agency-specific and
  * admin views with role-based access control.
  *
  * Key Features:
@@ -15,7 +15,7 @@
  * - Role-based access control (admin vs agency)
  * - Bulk read status updates
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -102,7 +102,7 @@ const columns = [
 	{ label: 'Title', accessor: 'title', sortable: true },
 	{ label: 'Date/Time', accessor: 'createdDate', sortable: true },
 	// { label: 'Candidates', accessor: 'candidates', sortable: false },
-	{ label: 'Topic Tags', accessor: 'topic', sortable: true },
+	{ label: 'Product Tags', accessor: 'topic', sortable: true },
 	// { label: 'Sources', accessor: 'hearFrom', sortable: false },
 	{ label: 'Labels', accessor: 'label', sortable: false },
 	{ label: 'Read/Unread', accessor: 'read', sortable: true },
@@ -236,7 +236,7 @@ function getReportSearchText(report) {
 /**
  * ReportsSection Component
  *
- * Main component for managing and displaying misinformation reports with
+ * Main component for managing and displaying caffeine reports with
  * comprehensive filtering, pagination, and CRUD operations. Supports both
  * admin and agency user roles with different data access patterns.
  *

@@ -16,7 +16,7 @@
  * - Firebase Firestore for report data
  * - AuthContext for user roles
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -524,7 +524,7 @@ const ComparisonGraphPlotted = ({dateRange, setDateRange, selectedTopics, setSel
                 color="blue"
                 className="pt-6 tracking-wider text-center"
               >
-                Topic Reports - {formatDates()}
+                Product Reports - {formatDates()}
               </Typography>
               <div className="relative z-10 lg:pl-20 lg:pr-20 overflow-x-auto max-h-[340px] min-h-[220px]">
                 <Line height={280} options={options} data={graphData} />

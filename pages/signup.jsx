@@ -13,7 +13,7 @@
  * - Privacy policy link (public page)
  * - Internationalization support
  * 
- * @author Truth Sleuth Local Team
+ * @author Caffeine App Team
  * @version 1.0.0
  */
 
@@ -46,7 +46,7 @@ import { Country, State, City } from 'country-state-city'
 import moment from 'moment'
 import { RiContactsBookLine } from 'react-icons/ri'
 import { Button, Typography } from '@material-tailwind/react'
-import { GiMagnifyingGlass } from "react-icons/gi";
+import { GiCoffeeCup } from "react-icons/gi";
 import Head from 'next/head'
 
 /**
@@ -310,16 +310,16 @@ const SignUp = () => {
 	return (
 		<>
 			<Head>
-				<title>Signup | Truth Sleuth Local</title>
+				<title>Signup | Caffeine App</title>
 			</Head>
 			<div data-component="signup" className="w-screen h-screen overflow-auto flex justify-center items-start pt-12 pb-8">
 				<div className="w-full max-w-sm font-light">
 					{/* Logo and branding section */}
 					<div className="flex flex-col items-center justify-center mb-2">
 						<div className="bg-blue-600 p-7 rounded-full mb-2">
-							<GiMagnifyingGlass size={30} className="fill-white" />
+							<GiCoffeeCup size={30} className="fill-white" />
 						</div>
-						<Typography variant="small" className='text-xs font-semibold text-[#2E3B4E]'>Truth Sleuth Local</Typography>
+						<Typography variant="small" className='text-xs font-semibold text-[#2E3B4E]'>Caffeine App</Typography>
 					</div>
 					
 					{/* Signup form */}

@@ -439,7 +439,7 @@ const TagDefaultsSettings = () => {
 
 			<div className="flex flex-col lg:flex-row gap-8 mb-4">
 				<RequiredTagListEditor
-					title="Topic Defaults"
+					title="Product Defaults"
 					maxActive={MAX_ACTIVE_TOPICS}
 					tags={topicRequired}
 					setTags={setTopicRequired}

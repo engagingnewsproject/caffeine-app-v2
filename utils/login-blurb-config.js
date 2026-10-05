@@ -10,8 +10,8 @@ export const LOGIN_BLURB_SETTINGS_DOC_ID = 'login'
 
 /** @type {{ en: string, es: string }} */
 export const DEFAULT_LOGIN_BLURB = {
-	en: 'Truth Sleuth helps people submit reports about local election information they think might be inaccurate and lets partner organizations review.',
-	es: 'Truth Sleuth ayuda a las personas a enviar reportes sobre información electoral local que consideran inexacta y permite que las organizaciones asociadas los revisen.',
+	en: 'Caffeine App helps people submit reports about caffeinated beverage ads they see and lets partner organizations review them.',
+	es: 'Caffeine App ayuda a las personas a enviar reportes sobre anuncios de bebidas con cafeína que ven y permite que las organizaciones asociadas los revisen.',
 }
 
 /**

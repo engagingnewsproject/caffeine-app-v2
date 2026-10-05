@@ -3,7 +3,7 @@
  * Backfill `agencyId` on existing report documents from agency display name.
  *
  * Prerequisites:
- * - Service account JSON at repo root (misinfo-*-firebase-adminsdk*.json, gitignored)
+ * - Service account JSON at repo root (caffeine-app-*-firebase-adminsdk*.json, gitignored)
  *   or GOOGLE_APPLICATION_CREDENTIALS / --service-account=path
  *
  * Usage:
@@ -18,7 +18,7 @@ const { FieldPath } = require('firebase-admin/firestore')
 const fs = require('fs')
 const path = require('path')
 
-const PROJECT_ID = 'misinfo-5d004'
+const PROJECT_ID = 'caffeine-app-d8cd8'
 const PAGE_SIZE = 400
 
 /**
@@ -94,7 +94,7 @@ function initAdmin(opts) {
 	}
 	const root = path.resolve(__dirname, '..')
 	for (const file of fs.readdirSync(root)) {
-		if (/misinfo-.*firebase-adminsdk.*\.json$/i.test(file)) {
+		if (/caffeine-app-.*firebase-adminsdk.*\.json$/i.test(file)) {
 			candidates.push(path.join(root, file))
 		}
 	}

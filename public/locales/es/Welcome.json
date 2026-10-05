@@ -30,7 +30,7 @@
     "phone": "Numero de teléfono (opcional)",
     "contact": "Acepto que mi redacción local pueda contactarme para dar seguimiento a los informes que comparto.",
     "password_error": "Las contraseñas no coinciden.",
-    "verifyEmailPageTitle": "Verificar correo | Truth Sleuth Local",
+    "verifyEmailPageTitle": "Verificar correo | Caffeine App",
     "verifyEmailHeading": "Verificación de correo",
     "verifyEmailAgencyIntro": "Al crear una cuenta, se le pedirá que verifique su correo electrónico.",
     "verifyEmailAgencyStep1": "Haga clic en el enlace del correo de verificación.",
@@ -40,5 +40,5 @@
     "verifyEmailSpamTip": "Si no lo ve en unos minutos, revise su carpeta de spam o correo no deseado.",
     "verifyEmailResend": "Reenviar correo",
     "verifyEmailSent": "Se envió un nuevo correo de verificación.",
-    "loginPurposeBlurb": "Truth Sleuth ayuda a las personas a enviar reportes sobre información electoral local que consideran inexacta y permite que las organizaciones asociadas los revisen."
+    "loginPurposeBlurb": "Caffeine App ayuda a las personas a enviar reportes sobre anuncios de bebidas con cafeína que ven y permite que las organizaciones asociadas los revisen."
   }

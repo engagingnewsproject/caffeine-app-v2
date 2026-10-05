@@ -16,7 +16,7 @@
  * - @material-tailwind/react for typography, buttons, and alerts
  * - Firebase Firestore for topic data
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -198,7 +198,7 @@ const ComparisonGraphSetup = ({privilege, agencyId}) => {
   return (
     <div data-component="ComparisonGraphSetup" className="relative h-full lg:h-1/2">
       <Typography variant="h4" color="blue" className="text-center tracking-wider">
-        Compare Topic Reports
+        Compare Product Reports
       </Typography>
               {/* Initial screen that appears when user selects the comparison view. Allows user to select three topics. */}
             {tab == 0 && 

@@ -15,7 +15,7 @@
  * - Firebase Firestore for agency/tag data
  * - country-state-city and react-select for location selection
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */
@@ -224,7 +224,7 @@ const Settings = () => {
           {agencyID && 
             <div>
               <div className="flex justify-between mx-6 my-6 tracking-normal items-center">
-                  <div className="font-light">Topic Tags</div>
+                  <div className="font-light">Product Tags</div>
                   <button
                       onClick={() => setTagSystem(1)}
                       className="bg-[#D3D3D3] hover:bg-[#ebebeb] text-[#2E3B4E] font-normal py-2 px-6 border border-[#868686] rounded-md">

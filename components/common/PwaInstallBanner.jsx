@@ -101,7 +101,7 @@ export default function PwaInstallBanner() {
 	if (!visible) return null
 
 	const canPromptInstall = Boolean(deferredPrompt)
-	const title = isIOS ? 'Add Truth Sleuth to your Home Screen' : 'Install Truth Sleuth'
+	const title = isIOS ? 'Add Caffeine App to your Home Screen' : 'Install Caffeine App'
 	const subtitle = isIOS
 		? 'Use it like an app — full screen, from your home screen.'
 		: 'Install for a faster, full-screen experience.'

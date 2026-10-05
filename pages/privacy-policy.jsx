@@ -10,7 +10,7 @@ export default function PrivacyPolicyPage() {
 	return (
 		<>
 			<Head>
-				<title>Privacy Policy | Truth Sleuth</title>
+				<title>Privacy Policy | Caffeine App</title>
 			</Head>
 			<div data-component="privacy-policy" className="min-h-screen bg-[#D3D3D3] py-8 px-4">
 				<div className="max-w-3xl mx-auto shadow-lg">

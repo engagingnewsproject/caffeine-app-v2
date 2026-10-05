@@ -42,8 +42,8 @@ export function openReportShareEmail({ email = '', title = '', url }) {
 	if (!url || typeof window === 'undefined') return
 
 	const subject = title?.trim()
-		? `Misinfo Report: ${title.trim()}`
-		: 'Misinfo Report'
+		? `Caffeine App Report: ${title.trim()}`
+		: 'Caffeine App Report'
 	const body = `Link to report:\n${url}`
 	const to = typeof email === 'string' ? email.trim() : ''
 	const uri = `mailto:${to}?subject=${encodeURIComponent(

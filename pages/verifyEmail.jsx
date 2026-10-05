@@ -11,7 +11,7 @@
  * - Login navigation
  * - User role verification
  * 
- * @author Truth Sleuth Local Team
+ * @author Caffeine App Team
  * @version 1.0.0
  */
 
@@ -21,7 +21,7 @@ import { useAuth } from '../context/AuthContext'
 import {signOut} from 'firebase/auth'
 import { auth } from '../config/firebase'
 import Head from 'next/head'
-import { GiMagnifyingGlass } from 'react-icons/gi'
+import { GiCoffeeCup } from 'react-icons/gi'
 import { Typography } from '@material-tailwind/react'
 import LanguageSwitcher from '../components/layout/LanguageSwitcher'
 import { useTranslation } from 'next-i18next'
@@ -105,10 +105,10 @@ const VerifyEmail = () => {
 					{/* Logo/branding section */}
 					<div className="flex flex-col items-center justify-center mb-4">
 						<div className="bg-blue-600 p-7 rounded-full mb-2">
-							<GiMagnifyingGlass size={30} className="fill-white" />
+							<GiCoffeeCup size={30} className="fill-white" />
 						</div>
 						<Typography variant="small" className="text-xs font-semibold text-[#2E3B4E]">
-							Truth Sleuth Local
+							Caffeine App
 						</Typography>
 					</div>
 					

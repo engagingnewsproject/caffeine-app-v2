@@ -28,11 +28,8 @@
       "cors": [
         {
           "origin": [
-            "https://misinfo-dashboard.netlify.app",
-            "https://dev-misinfo-dashboard.netlify.app",
-            "https://truthsleuthlocal.netlify.app",
-            "https://dev-truthsleuthlocal.netlify.app",
-            "http://localhost:3000","https://misinfo-5d004.web.app","https://misinfo-5d004.firebaseapp.com"
+            "https://caffeine-dashboard.netlify.app",
+            "http://localhost:3000","https://caffeine-app-d8cd8.web.app","https://caffeine-app-d8cd8.firebaseapp.com"
           ],
           "method": [
             "GET",

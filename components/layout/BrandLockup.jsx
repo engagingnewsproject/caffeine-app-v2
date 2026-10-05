@@ -4,10 +4,10 @@
 
 import React from 'react'
 import Image from 'next/image'
-import { GiMagnifyingGlass } from 'react-icons/gi'
+import { GiCoffeeCup } from 'react-icons/gi'
 
 /**
- * Circular brand mark: agency logo when available, otherwise magnifying glass.
+ * Circular brand mark: agency logo when available, otherwise coffee cup.
  * Always 40×40 so collapsed/expanded (and Headbar) stay consistent.
  *
  * @param {Object} props
@@ -28,7 +28,7 @@ export function BrandMark({ agencyLogo, isAgency }) {
 	}
 	return (
 		<div className="bg-brand rounded-full shrink-0 p-2.5 max-h-[40px] max-w-[40px]">
-			<GiMagnifyingGlass className="fill-white" size={18} />
+			<GiCoffeeCup className="fill-white" size={18} />
 		</div>
 	)
 }
@@ -51,7 +51,7 @@ export function BrandTitle({
 	const label =
 		customClaims?.agency && !customClaims?.admin
 			? agencyName || 'Agency'
-			: 'Truth Sleuth Local'
+			: 'Caffeine App'
 
 	return (
 		<Tag
@@ -62,7 +62,7 @@ export function BrandTitle({
 }
 
 /**
- * Mark + title row. Agency users get agency branding; admin/public get Truth Sleuth.
+ * Mark + title row. Agency users get agency branding; admin/public get Caffeine App.
  *
  * @param {Object} props
  * @param {string} [props.agencyLogo]

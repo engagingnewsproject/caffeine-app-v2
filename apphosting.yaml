@@ -1,4 +1,4 @@
-# Firebase App Hosting configuration for misinfo-dashboard (Next.js)
+# Firebase App Hosting configuration for Caffeine App (Next.js)
 # See: https://firebase.google.com/docs/app-hosting/configure
 
 # Optional: Cloud Run service tuning (defaults are usually fine)
@@ -12,7 +12,7 @@
 env:
   # --- Public env (NEXT_PUBLIC_* available at BUILD and RUNTIME) ---
   # Firebase API key: use secret so it is not in the repo (Google flags keys in public sources).
-  # Create secret FIREBASE_API_KEY in Secret Manager, then: firebase apphosting:secrets:grantaccess FIREBASE_API_KEY --backend truthsleuthlocal --project misinfo-5d004
+  # Create secret FIREBASE_API_KEY in Secret Manager, then: firebase apphosting:secrets:grantaccess FIREBASE_API_KEY --backend caffeine-dashboard --project caffeine-app-d8cd8
   # Also restrict this key in Cloud Console: APIs & Services → Credentials → Application restrictions (HTTP referrer) + API restrictions.
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     secret: FIREBASE_API_KEY
@@ -21,19 +21,19 @@ env:
       - RUNTIME
 
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: "misinfo-5d004.firebaseapp.com"
+    value: "caffeine-app-d8cd8.firebaseapp.com"
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: "misinfo-5d004"
+    value: "caffeine-app-d8cd8"
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: "misinfo-5d004.appspot.com"
+    value: "caffeine-app-d8cd8.appspot.com"
     availability:
       - BUILD
       - RUNTIME
@@ -57,7 +57,7 @@ env:
       - RUNTIME
 
   - variable: NEXT_PUBLIC_FIREBASE_RECAPTCHA_ENTERPRISE_SITE_KEY
-    # Must match Firebase App Check → truthsleuthlocal web app (reCAPTCHA Enterprise)
+    # Must match Firebase App Check → caffeine-dashboard web app (reCAPTCHA Enterprise)
     # and include the App Hosting domain in that key's allowed domains.
     value: "6Ld9gLksAAAAAJ5gvPvbmOd3vjQvuJjeRwixffdv"
     availability:
@@ -69,18 +69,18 @@ env:
 
   # Set to your App Hosting URL (or custom domain) after first deploy; used for auth email links
   - variable: NEXT_PUBLIC_APP_URL
-    value: "https://truthsleuthlocal--misinfo-5d004.us-central1.hosted.app"
+    value: "https://caffeine-dashboard--caffeine-app-d8cd8.us-central1.hosted.app"
     availability:
       - BUILD
       - RUNTIME
 
   # --- Secrets: create in Google Cloud Console → Secret Manager, then grant access ---
   # 1. Create secret "SENDGRID_API_KEY" in Secret Manager (console.cloud.google.com).
-  # 2. firebase apphosting:secrets:grantaccess SENDGRID_API_KEY --backend YOUR_BACKEND_ID --project misinfo-5d004
+  # 2. firebase apphosting:secrets:grantaccess SENDGRID_API_KEY --backend YOUR_BACKEND_ID --project caffeine-app-d8cd8
   - variable: SENDGRID_API_KEY
     secret: SENDGRID_API_KEY
 
   # Slack webhook: server-only secret (use in API routes, not client). Grant access:
-  # firebase apphosting:secrets:grantaccess SLACK_WEBHOOK_URL --backend truthsleuthlocal --project misinfo-5d004
+  # firebase apphosting:secrets:grantaccess SLACK_WEBHOOK_URL --backend caffeine-dashboard --project caffeine-app-d8cd8
   - variable: SLACK_WEBHOOK_URL
     secret: SLACK_WEBHOOK_URL

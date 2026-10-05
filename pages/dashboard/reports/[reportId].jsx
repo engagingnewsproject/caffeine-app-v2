@@ -15,7 +15,7 @@
  * - next/image for image display
  * - react-icons for UI icons
  *
- * @author Misinformation Dashboard Team
+ * @author Caffeine App Team
  * @version 1.0.0
  * @since 2024
  */

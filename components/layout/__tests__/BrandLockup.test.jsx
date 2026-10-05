@@ -6,9 +6,9 @@ import { render, screen } from '@testing-library/react'
 import BrandLockup, { BrandTitle } from '../BrandLockup'
 
 describe('BrandTitle', () => {
-	it('shows Truth Sleuth Local for admin', () => {
+	it('shows Caffeine App for admin', () => {
 		render(<BrandTitle customClaims={{ admin: true }} />)
-		expect(screen.getByText('Truth Sleuth Local')).toBeInTheDocument()
+		expect(screen.getByText('Caffeine App')).toBeInTheDocument()
 	})
 
 	it('shows agency name for agency users', () => {
@@ -21,9 +21,9 @@ describe('BrandTitle', () => {
 		expect(screen.getByText('Test Agency')).toBeInTheDocument()
 	})
 
-	it('shows Truth Sleuth Local for public users', () => {
+	it('shows Caffeine App for public users', () => {
 		render(<BrandTitle customClaims={{}} />)
-		expect(screen.getByText('Truth Sleuth Local')).toBeInTheDocument()
+		expect(screen.getByText('Caffeine App')).toBeInTheDocument()
 	})
 })
 
@@ -35,6 +35,6 @@ describe('BrandLockup', () => {
 				titleClassName="text-base"
 			/>,
 		)
-		expect(screen.getByText('Truth Sleuth Local')).toBeInTheDocument()
+		expect(screen.getByText('Caffeine App')).toBeInTheDocument()
 	})
 })

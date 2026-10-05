@@ -198,18 +198,11 @@ const nextConfig = {
       },
     ];
   },
-  // Optional: redirect legacy dev Netlify URL to dev truthsleuthlocal (only relevant if that URL is still in use)
   async redirects() {
     return [
       {
         source: '/site.webmanifest',
         destination: '/manifest.json',
-        permanent: true,
-      },
-      {
-        source: '/:path*',
-        has: [{ type: 'host', value: 'dev-misinfo-dashboard.netlify.app' }],
-        destination: 'https://dev-truthsleuthlocal.netlify.app/:path*',
         permanent: true,
       },
     ];
